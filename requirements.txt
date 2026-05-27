@@ -93,6 +93,7 @@ onnxruntime==1.26.0
 openai-whisper==20250625
 overrides==7.7.0
 packaging==26.2
+pandas==3.0.3
 pandocfilters==1.5.1
 parso==0.8.7
 pexpect==4.9.0
@@ -128,6 +129,7 @@ rpds-py==0.30.0
 safetensors==0.7.0
 scikit-learn==1.8.0
 scipy==1.17.1
+seaborn==0.13.2
 Send2Trash==2.1.0
 shellingham==1.5.4
 six==1.17.0
