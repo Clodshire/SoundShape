@@ -1,0 +1,55 @@
+# --- Python ---
+venv/
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+*.egg-info/
+.pytest_cache/
+.coverage
+.ipynb_checkpoints/
+
+# --- Node / Next.js ---
+node_modules/
+.next/
+out/
+.npm/
+*.tsbuildinfo
+next-env.d.ts
+
+# --- IDE / Editor ---
+.vscode/
+.idea/
+*.swp
+*.swo
+.claude/
+
+# --- macOS / OS junk ---
+.DS_Store
+Thumbs.db
+
+# --- Environment & secrets ---
+.env
+.env.local
+.env.*.local
+*.pem
+
+# --- ML model caches (HuggingFace, Torch hub) ---
+backend/models/*
+!backend/models/.gitkeep
+
+# --- Large data ---
+data/datasets/*
+!data/datasets/.gitkeep
+data/timelines/*
+!data/timelines/.gitkeep
+
+# Sample audio is small and useful for collaborators — keep it tracked.
+# If you commit copyrighted clips (drama scenes), uncomment to ignore:
+# data/samples/*.mp4
+# data/samples/*.mp3
+
+# --- Build / logs ---
+*.log
+dist/
+build/
