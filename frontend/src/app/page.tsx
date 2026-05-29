@@ -153,6 +153,18 @@ export default function Home() {
     }
   }, [hasMedia]);
 
+  const seek = useCallback(
+    (t: number) => {
+      if (hasMedia) {
+        const el = mediaRef.current;
+        if (el) el.currentTime = Math.max(0, Math.min(t, el.duration || t));
+      } else {
+        setCurrentTime(Math.max(0, Math.min(t, source.totalDuration)));
+      }
+    },
+    [hasMedia, source.totalDuration],
+  );
+
   const handleFile = useCallback(async (file: File) => {
     setIsProcessing(true);
     setProcessingError(null);
@@ -348,6 +360,7 @@ export default function Home() {
             timeline={source.timeline}
             totalDuration={source.totalDuration}
             currentTime={currentTime}
+            onSeek={seek}
           />
         </section>
 
