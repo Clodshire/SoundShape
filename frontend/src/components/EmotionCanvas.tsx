@@ -10,20 +10,30 @@ import type {
 
 interface Props {
   visual: VisualSpec;
-  // Resets the per-emotion animation phase when this value changes
-  // (so each new emotion draws from t=0 of its own motion cycle).
+  // Resets the per-emotion motion phase when this value changes.
   changedAt: number;
+  // When true, don't paint a black background — clear instead, so the canvas
+  // can sit transparently on top of a <video>.
+  transparent?: boolean;
 }
 
-export function EmotionCanvas({ visual, changedAt }: Props) {
+export function EmotionCanvas({ visual, changedAt, transparent = false }: Props) {
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const rafRef = useRef<number | null>(null);
   const startRef = useRef<number>(performance.now());
 
-  // Mutable ref so the rAF loop reads the latest visual spec without
-  // having to be torn down + re-created on every prop change.
   const visualRef = useRef<VisualSpec>(visual);
   visualRef.current = visual;
+  const transparentRef = useRef<boolean>(transparent);
+  transparentRef.current = transparent;
+
+  // Eased ("displayed") color + size, so emotion changes morph rather than cut.
+  const dispRef = useRef({
+    h: visual.color.h,
+    s: visual.color.s,
+    l: visual.color.l,
+    size: visual.size,
+  });
 
   useEffect(() => {
     startRef.current = performance.now();
@@ -47,8 +57,26 @@ export function EmotionCanvas({ visual, changedAt }: Props) {
 
     const render = (now: number) => {
       const v = visualRef.current;
+      const d = dispRef.current;
+      const k = 0.12; // easing factor → ~250ms feel toward the target
+      d.h = lerpHue(d.h, v.color.h, k);
+      d.s += (v.color.s - d.s) * k;
+      d.l += (v.color.l - d.l) * k;
+      d.size += (v.size - d.size) * k;
+
       const elapsed = (now - startRef.current) / 1000;
-      drawScene(ctx, canvas.getBoundingClientRect(), v, elapsed);
+      drawScene(
+        ctx,
+        canvas.getBoundingClientRect(),
+        {
+          shape: v.shape,
+          color: { h: d.h, s: d.s, l: d.l },
+          size: d.size,
+          motion: v.motion,
+        },
+        elapsed,
+        transparentRef.current,
+      );
       rafRef.current = requestAnimationFrame(render);
     };
     rafRef.current = requestAnimationFrame(render);
@@ -62,9 +90,17 @@ export function EmotionCanvas({ visual, changedAt }: Props) {
   return (
     <canvas
       ref={canvasRef}
-      className="h-full w-full rounded-2xl bg-black shadow-2xl"
+      className={
+        transparent ? "h-full w-full" : "h-full w-full rounded-2xl bg-black"
+      }
     />
   );
+}
+
+// Shortest-path hue interpolation (handles the 0↔360 wrap).
+function lerpHue(a: number, b: number, k: number): number {
+  const diff = ((b - a + 540) % 360) - 180;
+  return (a + diff * k + 360) % 360;
 }
 
 // ──────────────────────────────────────────────────────────────────────
@@ -76,11 +112,16 @@ function drawScene(
   rect: { width: number; height: number },
   v: VisualSpec,
   t: number,
+  transparent: boolean,
 ): void {
   const { width: w, height: h } = rect;
 
-  ctx.fillStyle = "#000";
-  ctx.fillRect(0, 0, w, h);
+  if (transparent) {
+    ctx.clearRect(0, 0, w, h);
+  } else {
+    ctx.fillStyle = "#000";
+    ctx.fillRect(0, 0, w, h);
+  }
 
   const cx = w / 2;
   const cy = h / 2;
@@ -109,18 +150,15 @@ function applyMotion(
   switch (m.type) {
     case "still":
       return [0, 0, 1, 0];
-
     case "slow_drift": {
       const ox = Math.sin(t * m.speed * 2) * 18 * m.amplitude;
       const oy = Math.cos(t * m.speed * 1.5) * 10 * m.amplitude;
       return [ox, oy, 1, 0];
     }
-
     case "pulse": {
       const scale = 1 + Math.sin(t * m.speed * 6) * 0.12 * m.amplitude;
       return [0, 0, scale, 0];
     }
-
     case "shake": {
       const f = m.speed * 24;
       const ox = (Math.sin(t * f) + Math.sin(t * f * 1.7)) * 14 * m.amplitude;
@@ -128,14 +166,12 @@ function applyMotion(
       const rot = Math.sin(t * f * 0.5) * 0.18 * m.amplitude;
       return [ox, oy, 1, rot];
     }
-
     case "tremor": {
       const f = m.speed * 50;
       const ox = (Math.random() - 0.5) * 8 * m.amplitude;
       const oy = (Math.random() - 0.5) * 8 * m.amplitude;
       return [ox, oy, 1 + Math.sin(t * f) * 0.02, 0];
     }
-
     case "sink": {
       const cycle = (t * m.speed) % 4;
       const oy = Math.sin((cycle / 4) * Math.PI) * 22 * m.amplitude;
