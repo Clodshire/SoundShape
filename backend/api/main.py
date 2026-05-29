@@ -53,7 +53,7 @@ def health() -> dict:
 async def process(
     file: UploadFile = File(...),
     language: Optional[str] = Form(default=None),
-    model_size: str = Form(default="base"),
+    model_size: str = Form(default="large-v3-turbo"),
 ) -> JSONResponse:
     """Run the full SoundShape pipeline on an uploaded audio/video file.
 

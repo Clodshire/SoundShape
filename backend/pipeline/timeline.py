@@ -62,7 +62,7 @@ SHORT_TO_LONG = {
 def build_timeline(
     input_path: str | Path,
     language: Optional[str] = None,
-    model_size: str = "base",
+    model_size: str = "large-v3-turbo",
 ) -> dict:
     """Run the full SoundShape pipeline on an audio or video file.
 
@@ -70,7 +70,7 @@ def build_timeline(
         input_path: Source media file. Any FFmpeg-readable format.
         language: ISO 639-1 language hint for Whisper (e.g. "en", "ko").
                   None = auto-detect.
-        model_size: Whisper model size. "base" for MVP speed.
+        model_size: faster-whisper model. "large-v3-turbo" = best accuracy.
 
     Returns:
         JSON-serializable dict with metadata + segments[].

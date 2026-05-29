@@ -1,13 +1,13 @@
-"""Automatic speech recognition — OpenAI Whisper with word-level timestamps.
+"""Automatic speech recognition — faster-whisper (CTranslate2) + word timestamps.
 
-Whisper outputs both (a) coarse "segments" (paragraph-scale chunks the
-decoder produces naturally) and (b) per-word timestamps when requested.
-SoundShape uses the segments as the unit of emotion analysis (one
-subtitle = one emotion read) and the per-word timestamps for tight
-subtitle sync.
+Whisper is the de-facto open-source ASR model (free, multilingual, strong on
+Korean). We run it through **faster-whisper** (CTranslate2 backend) which is
+~4x faster and lighter than the reference `openai-whisper`, so we can afford
+the high-accuracy **large-v3-turbo** model on CPU.
 
-For Phase 4 MVP we default to the `base` model (74 MB, fast). Phase 5
-will switch the default to `large-v3-turbo` for accuracy.
+Outputs coarse segments (one subtitle = one emotion read) + per-word timestamps
+(for karaoke caption sync). The built-in VAD filter trims silence so Whisper
+doesn't hallucinate text over non-speech.
 """
 
 from __future__ import annotations
@@ -16,9 +16,11 @@ from dataclasses import asdict, dataclass, field
 from functools import lru_cache
 from typing import List, Optional
 
-import whisper
+from faster_whisper import WhisperModel
 
-DEFAULT_MODEL = "base"
+# Most accurate practical model. Fallbacks if a weight set can't be fetched.
+DEFAULT_MODEL = "large-v3-turbo"
+_FALLBACKS = ["large-v3-turbo", "large-v3", "small", "base"]
 
 
 @dataclass
@@ -63,8 +65,25 @@ class Transcription:
 
 
 @lru_cache(maxsize=2)
-def _load_model(model_size: str):
-    return whisper.load_model(model_size)
+def _load_model(model_size: str) -> WhisperModel:
+    """Load a faster-whisper model, falling back to smaller ones if needed.
+
+    int8 on CPU is the fast/accurate sweet spot on Apple Silicon (CTranslate2
+    has no Metal backend, so we stay on CPU).
+    """
+    order = [model_size] + [m for m in _FALLBACKS if m != model_size]
+    last_err: Optional[Exception] = None
+    for name in order:
+        try:
+            model = WhisperModel(name, device="cpu", compute_type="int8")
+            if name != model_size:
+                # Surface the fallback so it's visible in logs.
+                print(f"[asr] requested {model_size!r} unavailable; using {name!r}")
+            return model
+        except Exception as e:  # noqa: BLE001
+            last_err = e
+            continue
+    raise RuntimeError(f"Could not load any Whisper model: {last_err}")
 
 
 def transcribe(
@@ -72,57 +91,56 @@ def transcribe(
     language: Optional[str] = None,
     model_size: str = DEFAULT_MODEL,
 ) -> Transcription:
-    """Transcribe a WAV file with per-segment + per-word timestamps."""
+    """Transcribe a WAV with per-segment + per-word timestamps."""
     model = _load_model(model_size)
-    result = model.transcribe(
+    segments_iter, info = model.transcribe(
         wav_path,
         language=language,
         word_timestamps=True,
-        fp16=False,  # MPS/CPU friendly; Whisper warns otherwise
-        verbose=False,
+        vad_filter=True,  # built-in Silero VAD: skip silence/non-speech
+        beam_size=5,
     )
 
     segments: List[TranscriptionSegment] = []
-    for seg in result.get("segments", []):
-        words = [
-            Word(
-                word=w["word"].strip(),
-                start=float(w["start"]),
-                end=float(w["end"]),
-                probability=float(w.get("probability", 0.0)),
+    all_text: List[str] = []
+    for seg in segments_iter:  # generator — iterating runs the transcription
+        words: List[Word] = []
+        for w in seg.words or []:
+            words.append(
+                Word(
+                    word=w.word.strip(),
+                    start=float(w.start),
+                    end=float(w.end),
+                    probability=float(getattr(w, "probability", 0.0)),
+                )
             )
-            for w in seg.get("words", [])
-        ]
+        text = str(seg.text).strip()
+        all_text.append(text)
         segments.append(
             TranscriptionSegment(
-                start=float(seg["start"]),
-                end=float(seg["end"]),
-                text=str(seg["text"]).strip(),
+                start=float(seg.start),
+                end=float(seg.end),
+                text=text,
                 words=words,
             )
         )
 
     return Transcription(
-        text=str(result.get("text", "")).strip(),
-        language=str(result.get("language", "")),
+        text=" ".join(all_text).strip(),
+        language=str(info.language),
         segments=segments,
     )
 
 
 if __name__ == "__main__":
     import sys
-    from pprint import pprint
 
     if len(sys.argv) < 2:
-        print("Usage: python -m backend.pipeline.asr <wav_path>")
+        print("Usage: python -m backend.pipeline.asr <wav_path> [model_size]")
         sys.exit(1)
-
-    t = transcribe(sys.argv[1])
+    size = sys.argv[2] if len(sys.argv) > 2 else DEFAULT_MODEL
+    t = transcribe(sys.argv[1], model_size=size)
     print(f"Language: {t.language}")
     print(f"Full text: {t.text}\n")
-    for i, seg in enumerate(t.segments):
+    for seg in t.segments:
         print(f"[{seg.start:6.2f}-{seg.end:6.2f}] {seg.text}")
-        for w in seg.words[:6]:
-            print(f"    {w.start:6.2f}-{w.end:6.2f}  {w.word!r}")
-        if len(seg.words) > 6:
-            print(f"    … +{len(seg.words) - 6} more words")
