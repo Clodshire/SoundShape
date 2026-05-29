@@ -97,6 +97,7 @@ export interface TimelineFrame {
   emotion: Emotion;
   words?: Word[];
   prosody?: Prosody;
+  visual?: VisualSpec; // backend pre-computes this; frontend also recomputes locally
 }
 
 // Full backend response: metadata + segments.

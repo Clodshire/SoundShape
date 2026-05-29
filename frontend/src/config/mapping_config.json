@@ -1,0 +1,78 @@
+{
+  "version": "1.0.0",
+  "description": "SoundShape cross-modal mapping spec. Maps an emotion vector (category, valence, arousal) to a visual specification (shape, color, size, motion). Each channel's rule is grounded in published cross-modal correspondence research. Human-readable justification: docs/mapping_rationale.md. This file is the single source of truth, consumed by both backend/mapping/engine.py and frontend/src/lib/mapping.ts (the frontend copy is synced via scripts/sync_mapping_config.py).",
+  "shape": {
+    "citation": "Köhler (1929); Ramachandran & Hubbard (2001) — Bouba/Kiki effect: angular forms pair with harsh / high-arousal sounds; rounded, flowing forms pair with soft / low-arousal sounds.",
+    "by_category": {
+      "anger": "jagged_star",
+      "fear": "trembling_spikes",
+      "joy": "expanding_burst",
+      "surprise": "expanding_burst",
+      "sadness": "flowing_wave",
+      "resignation": "drooping_ellipse",
+      "sincerity": "soft_circle",
+      "sarcasm": "jagged_star",
+      "neutral": "simple_circle"
+    },
+    "default": "simple_circle"
+  },
+  "color": {
+    "citation": "Hupka et al. (1997) — cross-cultural color-emotion associations: red=anger, blue=sadness, yellow=joy, consistent across six cultures. Russell (1980) — saturation scales with arousal; calmer states read as more muted.",
+    "hue_by_category": {
+      "anger": 0,
+      "sadness": 220,
+      "joy": 50,
+      "fear": 270,
+      "surprise": 45,
+      "resignation": 230,
+      "sincerity": 80,
+      "sarcasm": 200
+    },
+    "neutral": { "h": 0, "s": 0, "l": 55 },
+    "saturation": { "base": 40, "arousal_gain": 50, "min": 25, "max": 95 },
+    "lightness": { "base": 50, "valence_gain": -8, "arousal_gain": 5, "min": 35, "max": 70 }
+  },
+  "size": {
+    "citation": "Russell (1980) arousal axis — perceptual salience scales with arousal; larger forms read as more intense / urgent.",
+    "base": 0.3,
+    "arousal_gain": 0.55,
+    "min": 0.2,
+    "max": 0.95
+  },
+  "motion": {
+    "citation": "Spence (2011) — crossmodal correspondences tutorial. Banse & Scherer (1996) — vocal instability (high arousal, jitter/shimmer) corresponds to agitated motion; low-arousal states to slow drift / settling.",
+    "rules": [
+      {
+        "when": { "arousal_gt": 0.4, "valence_lt": 0.0 },
+        "motion": { "type": "shake", "amplitude": 0.7, "speed": 0.9 },
+        "why": "High arousal + negative valence (anger-like) → sharp, jittery agitation."
+      },
+      {
+        "when": { "category": "fear" },
+        "motion": { "type": "tremor", "amplitude": 0.5, "speed": 1.0 },
+        "why": "Fear → fast, fine trembling."
+      },
+      {
+        "when": { "arousal_gt": 0.4 },
+        "motion": { "type": "pulse", "amplitude": 0.55, "speed": 0.7 },
+        "why": "High arousal + non-negative valence (joy/surprise) → energetic pulsing."
+      },
+      {
+        "when": { "category": "sadness", "arousal_lt": -0.2, "valence_lt": 0.0 },
+        "motion": { "type": "slow_drift", "amplitude": 0.35, "speed": 0.25 },
+        "why": "Calm sadness → slow horizontal drifting, like a sigh."
+      },
+      {
+        "when": { "category": "resignation" },
+        "motion": { "type": "sink", "amplitude": 0.4, "speed": 0.25 },
+        "why": "Resignation → slow downward sink, an exhale."
+      },
+      {
+        "when": { "category": "sincerity" },
+        "motion": { "type": "pulse", "amplitude": 0.22, "speed": 0.4 },
+        "why": "Warm sincerity → soft, gentle pulse."
+      }
+    ],
+    "default": { "type": "still", "amplitude": 0.0, "speed": 0.0 }
+  }
+}

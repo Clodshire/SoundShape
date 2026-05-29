@@ -42,6 +42,7 @@ import logging
 from pathlib import Path
 from typing import Optional
 
+from backend.mapping.engine import map_emotion_to_visual
 from backend.pipeline import audio_io, asr
 from backend.pipeline.emotion import classify_emotion
 from backend.pipeline.prosody import extract_prosody
@@ -120,6 +121,15 @@ def build_timeline(
             short = emotion_result.category
             long_name = SHORT_TO_LONG.get(short, short)
 
+            emotion_payload = {
+                "category": long_name,
+                "category_short": short,
+                "category_confidence": emotion_result.category_confidence,
+                "valence": emotion_result.valence,
+                "arousal": emotion_result.arousal,
+                "dominance": emotion_result.dominance,
+            }
+
             segments_out.append(
                 {
                     "t": seg.start,
@@ -127,14 +137,12 @@ def build_timeline(
                     "text": seg.text,
                     "words": [w.to_dict() for w in seg.words],
                     "prosody": prosody_result.features.to_dict(),
-                    "emotion": {
-                        "category": long_name,
-                        "category_short": short,
-                        "category_confidence": emotion_result.category_confidence,
-                        "valence": emotion_result.valence,
-                        "arousal": emotion_result.arousal,
-                        "dominance": emotion_result.dominance,
-                    },
+                    "emotion": emotion_payload,
+                    # Pre-computed visual spec via the shared research-grounded
+                    # mapping engine. The web frontend recomputes this locally
+                    # too, but emitting it here lets any other client (Chrome
+                    # extension, mobile) render without re-implementing rules.
+                    "visual": map_emotion_to_visual(emotion_payload),
                 }
             )
 
