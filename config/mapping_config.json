@@ -1,8 +1,8 @@
 {
-  "version": "1.0.0",
-  "description": "SoundShape cross-modal mapping spec. Maps an emotion vector (category, valence, arousal) to a visual specification (shape, color, size, motion). Each channel's rule is grounded in published cross-modal correspondence research. Human-readable justification: docs/mapping_rationale.md. This file is the single source of truth, consumed by both backend/mapping/engine.py and frontend/src/lib/mapping.ts (the frontend copy is synced via scripts/sync_mapping_config.py).",
+  "version": "1.1.0",
+  "description": "SoundShape cross-modal mapping spec. Maps an emotion vector (category, valence, arousal) to a visual specification (shape, color, size, motion). Each channel is grounded in published research; human-readable justification in docs/mapping_rationale.md. Single source of truth, consumed by backend/mapping/engine.py and frontend/src/lib/mapping.ts (synced via scripts/sync_mapping_config.py). NOTE: arousal is signed [-1,+1]; size and saturation map it MONOTONICALLY via (arousal+1)/2 so calm reads small/muted and excited reads large/vivid.",
   "shape": {
-    "citation": "Köhler (1929); Ramachandran & Hubbard (2001) — Bouba/Kiki effect: angular forms pair with harsh / high-arousal sounds; rounded, flowing forms pair with soft / low-arousal sounds.",
+    "citation": "Angular forms are perceived as threatening, rounded forms as warm/safe: Aronoff et al. (1992); Larson, Aronoff & Stearns (2007). Neural basis: sharp-contoured objects preferentially engage the amygdala (threat): Bar & Neta (2006, 2007). Supported by the Bouba/Kiki sound-shape effect: Köhler (1929); Ramachandran & Hubbard (2001).",
     "by_category": {
       "anger": "jagged_star",
       "fear": "trembling_spikes",
@@ -17,7 +17,7 @@
     "default": "simple_circle"
   },
   "color": {
-    "citation": "Hupka et al. (1997) — cross-cultural color-emotion associations: red=anger, blue=sadness, yellow=joy, consistent across six cultures. Russell (1980) — saturation scales with arousal; calmer states read as more muted.",
+    "citation": "HUE: anger=red is cross-culturally robust (Hupka et al. 1997). Remaining hues from color-emotion norms (Kaya & Epps 2004; Valdez & Mehrabian 1994). SATURATION rises monotonically with arousal (Valdez & Mehrabian 1994; Wilms & Oberfeld 2018). LIGHTNESS rises with valence — brighter = more pleasant (Valdez & Mehrabian 1994). DESIGN CHOICES (weaker cross-cultural evidence): sadness=blue is partly an English idiom; fear=violet is our choice (Hupka found fear clusters on black/grey).",
     "hue_by_category": {
       "anger": 0,
       "sadness": 220,
@@ -29,18 +29,18 @@
       "sarcasm": 200
     },
     "neutral": { "h": 0, "s": 0, "l": 55 },
-    "saturation": { "base": 40, "arousal_gain": 50, "min": 25, "max": 95 },
-    "lightness": { "base": 50, "valence_gain": -8, "arousal_gain": 5, "min": 35, "max": 70 }
+    "saturation": { "base": 30, "arousal_gain": 60, "min": 25, "max": 95 },
+    "lightness": { "base": 50, "valence_gain": 12, "arousal_gain": 0, "min": 35, "max": 70 }
   },
   "size": {
-    "citation": "Russell (1980) arousal axis — perceptual salience scales with arousal; larger forms read as more intense / urgent.",
-    "base": 0.3,
-    "arousal_gain": 0.55,
+    "citation": "Size scales monotonically with arousal — Russell (1980) activation axis; larger forms read as more intense. Linguistically reinforced by the Frequency Code (Ohala 1994): low pitch → large/dominant, high pitch → small; and sound-magnitude symbolism (Sapir 1929). Monotonic in signed arousal: calm → small, excited → large.",
+    "base": 0.2,
+    "arousal_gain": 0.7,
     "min": 0.2,
     "max": 0.95
   },
   "motion": {
-    "citation": "Spence (2011) — crossmodal correspondences tutorial. Banse & Scherer (1996) — vocal instability (high arousal, jitter/shimmer) corresponds to agitated motion; low-arousal states to slow drift / settling.",
+    "citation": "Movement kinematics carry emotion: fast/jerky motion reads as anger/high-arousal, slow/smooth as sadness/low-arousal — Pollick et al. (2001). General temporal crossmodal mapping (fast sound ↔ fast motion) — Spence (2011). The vocal instability we mirror as visual instability (jitter/shimmer in high-arousal states) is from Banse & Scherer (1996).",
     "rules": [
       {
         "when": { "arousal_gt": 0.4, "valence_lt": 0.0 },

@@ -72,7 +72,7 @@ function pickColor(
   if (category === "neutral") return { ...c.neutral };
   const h = c.hue_by_category[category] ?? 0;
   const s = clamp(
-    c.saturation.base + Math.abs(arousal) * c.saturation.arousal_gain,
+    c.saturation.base + arousal01(arousal) * c.saturation.arousal_gain,
     c.saturation.min,
     c.saturation.max,
   );
@@ -88,11 +88,13 @@ function pickColor(
 
 function pickSize(arousal: number): number {
   const s = config.size;
-  return clamp(
-    s.base + Math.abs(arousal) * s.arousal_gain,
-    s.min,
-    s.max,
-  );
+  return clamp(s.base + arousal01(arousal) * s.arousal_gain, s.min, s.max);
+}
+
+// Map signed arousal [-1,+1] → [0,1] monotonically (calm→0, excited→1).
+// Fixes the old |arousal| formula that made very calm states render large/vivid.
+function arousal01(arousal: number): number {
+  return (arousal + 1) / 2;
 }
 
 function matches(

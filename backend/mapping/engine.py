@@ -39,6 +39,16 @@ def _clamp(x: float, lo: float, hi: float) -> float:
     return max(lo, min(hi, x))
 
 
+def _arousal01(arousal: float) -> float:
+    """Map signed arousal [-1, +1] → [0, 1] monotonically.
+
+    Calm (negative arousal) → near 0; excited (positive) → near 1. This is
+    the fix for the old |arousal| formulation, which incorrectly made very
+    calm states render as large/saturated as very excited ones.
+    """
+    return (arousal + 1.0) / 2.0
+
+
 def map_emotion_to_visual(emotion: Dict[str, Any]) -> Dict[str, Any]:
     """Map an emotion dict {category, valence, arousal} → visual spec dict."""
     cfg = _config()
@@ -64,7 +74,9 @@ def _color(cfg: dict, category: str, valence: float, arousal: float) -> dict:
     hue = c["hue_by_category"].get(category, 0)
     sat = c["saturation"]
     s = _clamp(
-        sat["base"] + abs(arousal) * sat["arousal_gain"], sat["min"], sat["max"]
+        sat["base"] + _arousal01(arousal) * sat["arousal_gain"],
+        sat["min"],
+        sat["max"],
     )
     lt = c["lightness"]
     light = _clamp(
@@ -78,7 +90,7 @@ def _color(cfg: dict, category: str, valence: float, arousal: float) -> dict:
 def _size(cfg: dict, arousal: float) -> float:
     s = cfg["size"]
     return _clamp(
-        s["base"] + abs(arousal) * s["arousal_gain"], s["min"], s["max"]
+        s["base"] + _arousal01(arousal) * s["arousal_gain"], s["min"], s["max"]
     )
 
 
