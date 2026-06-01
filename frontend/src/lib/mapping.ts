@@ -60,6 +60,12 @@ interface MappingConfig {
     intensity: { db_min: number; db_max: number; size_gain: number };
     speech_rate: { rate_min: number; rate_max: number; speed_gain: number };
   };
+  confidence?: {
+    enabled?: boolean;
+    conf_min: number;
+    conf_max: number;
+    floor: number;
+  };
 }
 
 const config = rawConfig as unknown as MappingConfig;
@@ -71,13 +77,34 @@ export function mapEmotionToVisual(
   emotion: Emotion,
   prosody?: Prosody | null,
 ): VisualSpec {
-  const visual: VisualSpec = {
+  let visual: VisualSpec = {
     shape: pickShape(emotion.category),
     color: pickColor(emotion.category, emotion.valence, emotion.arousal),
     size: pickSize(emotion.arousal),
     motion: pickMotion(emotion.category, emotion.valence, emotion.arousal),
   };
-  return prosody ? applyProsody(visual, prosody) : visual;
+  if (prosody) visual = applyProsody(visual, prosody);
+  if (emotion.confidence != null) visual = applyConfidence(visual, emotion.confidence);
+  return visual;
+}
+
+// When the classifier is unsure, express less: mute saturation, shrink size,
+// calm motion — instead of asserting a possibly-wrong emotion.
+function applyConfidence(visual: VisualSpec, confidence: number): VisualSpec {
+  const cc = config.confidence;
+  if (!cc || !cc.enabled) return visual;
+  const f = clamp(
+    (confidence - cc.conf_min) / (cc.conf_max - cc.conf_min),
+    cc.floor,
+    1,
+  );
+  const sizeMin = config.size.min;
+  return {
+    shape: visual.shape,
+    color: { ...visual.color, s: visual.color.s * f },
+    size: sizeMin + (visual.size - sizeMin) * f,
+    motion: { ...visual.motion, amplitude: visual.motion.amplitude * f },
+  };
 }
 
 function norm(x: number, lo: number, hi: number): number {

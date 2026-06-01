@@ -73,7 +73,36 @@ def map_emotion_to_visual(
     }
     if prosody:
         visual = _apply_prosody(cfg, visual, prosody)
+    conf = emotion.get("category_confidence", emotion.get("confidence"))
+    if conf is not None:
+        visual = _apply_confidence(cfg, visual, float(conf))
     return visual
+
+
+def _apply_confidence(
+    cfg: dict, visual: Dict[str, Any], confidence: float
+) -> Dict[str, Any]:
+    """Mute/shrink/calm the visual when the classifier is unsure."""
+    cc = cfg.get("confidence")
+    if not cc or not cc.get("enabled", False):
+        return visual
+    f = _clamp(
+        (confidence - cc["conf_min"]) / (cc["conf_max"] - cc["conf_min"]),
+        cc["floor"],
+        1.0,
+    )
+    color = dict(visual["color"])
+    color["s"] = color["s"] * f
+    size_min = cfg["size"]["min"]
+    size = size_min + (visual["size"] - size_min) * f
+    motion = dict(visual["motion"])
+    motion["amplitude"] = motion["amplitude"] * f
+    return {
+        "shape": visual["shape"],
+        "color": color,
+        "size": size,
+        "motion": motion,
+    }
 
 
 def _norm(x: float, lo: float, hi: float) -> float:
