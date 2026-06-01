@@ -127,12 +127,22 @@ Verified behavior (`fuse_valence`):
 | confident negative tone + positive words (sarcasm, EN) | −0.55 | −0.55 (unchanged) |
 | Korean (any) | −0.05 | −0.05 (gated off) |
 
-**Language gating — important.** The multilingual text model is reliable on
-English but **mislabels clear Korean negatives as positive** (e.g. "이건 정말
-최악이야" → +0.42). Fusing it would *corrupt* valence for our primary audience,
-so text fusion is **English-only for now** (`SOUNDSHAPE_TEXT_LANGS`, default
-`en`) and a no-op otherwise. Korean text fusion awaits a Korean-validated
-sentiment model. This keeps the feature strictly net-positive.
+**Per-language routing (English + Korean).** A single multilingual text model
+mislabels clear Korean negatives as positive (e.g. "이건 정말 최악이야" → +0.42),
+which would *corrupt* valence for our primary audience. So `text_sentiment.py`
+routes each language to a model validated for it:
+
+| lang | model | probe results |
+|---|---|---|
+| en | `lxyuan/distilbert-…-sentiments-student` | "so happy" → +0.97 ✓ |
+| ko | `WhitePeak/bert-base-cased-Korean-sentiment` | "최악이야"→NEG ✓, "행복해요"→POS ✓, "슬프고 우울해"→NEG ✓ |
+
+The Korean model was chosen by testing candidates on the exact sentences the
+multilingual model failed; `matthewburke/korean_sentiment` was rejected (it
+mislabeled "너무 슬프고 우울해" as positive). Korean fusion verified end-to-end:
+uncertain + positive → +0.26, uncertain + negative → −0.32, confident negative
+tone (sarcasm) → unchanged. `SOUNDSHAPE_TEXT_LANGS` default is now `en,ko`;
+other languages remain a no-op until a validated model is added.
 
 ## Honest limitation statement (for the report)
 

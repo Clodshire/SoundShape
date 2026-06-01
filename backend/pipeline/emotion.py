@@ -87,12 +87,12 @@ TEXT_FUSION = os.environ.get("SOUNDSHAPE_TEXT_FUSION", "1") != "0"
 VALENCE_UNCERTAIN_BAND = 0.2
 TEXT_MIN_CONF = 0.5
 TEXT_MAX_PULL = 0.5
-# Languages where the text-sentiment model is reliable. Korean is excluded for
-# now: the multilingual model mislabels clear Korean negatives as positive, so
-# fusing it would CORRUPT valence for our primary audience. Re-enable once a
-# Korean-validated sentiment model is in place (env-overridable).
+# Languages where we have a validated text-sentiment model (text_sentiment.py
+# routes each to a language-appropriate model). English uses a multilingual
+# model; Korean uses a Korean-validated model (WhitePeak) that correctly labels
+# Korean negatives. Env-overridable.
 SUPPORTED_TEXT_LANGS = set(
-    filter(None, os.environ.get("SOUNDSHAPE_TEXT_LANGS", "en").split(","))
+    filter(None, os.environ.get("SOUNDSHAPE_TEXT_LANGS", "en,ko").split(","))
 )
 
 
@@ -113,7 +113,7 @@ def fuse_valence(
         return acoustic_v  # voice is confident → trust the tone (sarcasm-safe)
     from backend.pipeline.text_sentiment import text_valence
 
-    tv, tconf = text_valence(text)
+    tv, tconf = text_valence(text, language or "en")
     if tconf < TEXT_MIN_CONF:
         return acoustic_v
     # Pull is strongest at v≈0 and fades to 0 at the band edge.

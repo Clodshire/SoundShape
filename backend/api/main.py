@@ -69,9 +69,10 @@ def prewarm() -> None:
 
         logger.info("Pre-warming models (%s)…", STREAM_MODEL)
         asr.transcribe(str(sample), model_size=STREAM_MODEL)
-        emotion.classify_emotion(str(sample), text="warmup")
+        emotion.classify_emotion(str(sample), text="warmup", language="en")
         prosody.extract_prosody(str(sample))
-        text_valence("warmup")
+        text_valence("warmup", "en")
+        text_valence("워밍업", "ko")
         logger.info("Pre-warm complete.")
     except Exception as e:  # noqa: BLE001
         logger.warning("Pre-warm skipped: %s", e)
