@@ -129,6 +129,7 @@ def build_timeline(
                 "arousal": emotion_result.arousal,
                 "dominance": emotion_result.dominance,
             }
+            prosody_payload = prosody_result.features.to_dict()
 
             segments_out.append(
                 {
@@ -136,13 +137,15 @@ def build_timeline(
                     "duration": duration,
                     "text": seg.text,
                     "words": [w.to_dict() for w in seg.words],
-                    "prosody": prosody_result.features.to_dict(),
+                    "prosody": prosody_payload,
                     "emotion": emotion_payload,
-                    # Pre-computed visual spec via the shared research-grounded
-                    # mapping engine. The web frontend recomputes this locally
-                    # too, but emitting it here lets any other client (Chrome
-                    # extension, mobile) render without re-implementing rules.
-                    "visual": map_emotion_to_visual(emotion_payload),
+                    # Visual spec via the shared research-grounded engine. The
+                    # base comes from the emotion vector; the MEASURED prosody
+                    # (jitter/shimmer/intensity/rate) then modulates it, so the
+                    # interpretable PRAAT features drive the output. The web
+                    # frontend recomputes this identically; emitting it here
+                    # lets any other client render without re-implementing rules.
+                    "visual": map_emotion_to_visual(emotion_payload, prosody_payload),
                 }
             )
 

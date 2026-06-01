@@ -22,7 +22,7 @@ from __future__ import annotations
 import json
 from functools import lru_cache
 from pathlib import Path
-from typing import Any, Dict
+from typing import Any, Dict, Optional
 
 _CONFIG_PATH = (
     Path(__file__).resolve().parents[2] / "config" / "mapping_config.json"
@@ -49,17 +49,96 @@ def _arousal01(arousal: float) -> float:
     return (arousal + 1.0) / 2.0
 
 
-def map_emotion_to_visual(emotion: Dict[str, Any]) -> Dict[str, Any]:
-    """Map an emotion dict {category, valence, arousal} → visual spec dict."""
+def map_emotion_to_visual(
+    emotion: Dict[str, Any],
+    prosody: Optional[Dict[str, Any]] = None,
+) -> Dict[str, Any]:
+    """Map an emotion vector (+ optional measured prosody) → visual spec dict.
+
+    The base visual comes from the emotion vector {category, valence, arousal}
+    (predicted by wav2vec2). When `prosody` (the interpretable PRAAT features)
+    is supplied, prosody_modulation nudges motion/size from the MEASURED
+    acoustics — so the explainable signal drives the output, not just the
+    black-box embedding.
+    """
     cfg = _config()
     category = emotion.get("category", "neutral")
     valence = float(emotion.get("valence", 0.0))
     arousal = float(emotion.get("arousal", 0.0))
-    return {
+    visual = {
         "shape": _shape(cfg, category),
         "color": _color(cfg, category, valence, arousal),
         "size": _size(cfg, arousal),
         "motion": _motion(cfg, category, valence, arousal),
+    }
+    if prosody:
+        visual = _apply_prosody(cfg, visual, prosody)
+    return visual
+
+
+def _norm(x: float, lo: float, hi: float) -> float:
+    if hi <= lo:
+        return 0.0
+    return _clamp((x - lo) / (hi - lo), 0.0, 1.0)
+
+
+def _apply_prosody(
+    cfg: dict, visual: Dict[str, Any], prosody: Dict[str, Any]
+) -> Dict[str, Any]:
+    """Modulate the base visual using measured PRAAT prosody features."""
+    pm = cfg.get("prosody_modulation")
+    if not pm or not pm.get("enabled", False):
+        return visual
+
+    motion = dict(visual["motion"])
+
+    # Instability: jitter + shimmer → motion amplitude + a little speed.
+    inst = pm["instability"]
+    jit = _norm(
+        float(prosody.get("jitter_local", 0.0)),
+        inst["jitter_min"],
+        inst["jitter_max"],
+    )
+    shi = _norm(
+        float(prosody.get("shimmer_local", 0.0)),
+        inst["shimmer_min"],
+        inst["shimmer_max"],
+    )
+    instability = (jit + shi) / 2.0
+    motion["amplitude"] = _clamp(
+        motion["amplitude"] * (1.0 + instability * inst["amplitude_gain"]),
+        0.0,
+        1.0,
+    )
+    motion["speed"] = _clamp(
+        motion["speed"] * (1.0 + instability * inst["speed_gain"]), 0.0, 1.5
+    )
+
+    # Speech rate → motion speed.
+    sr = pm["speech_rate"]
+    rate = _norm(
+        float(prosody.get("speech_rate_approx", 0.0)),
+        sr["rate_min"],
+        sr["rate_max"],
+    )
+    motion["speed"] = _clamp(
+        motion["speed"] * (1.0 + rate * sr["speed_gain"]), 0.0, 1.5
+    )
+
+    # Intensity (loudness) → size / brightness.
+    inten_cfg = pm["intensity"]
+    inten = _norm(
+        float(prosody.get("intensity_mean", 0.0)),
+        inten_cfg["db_min"],
+        inten_cfg["db_max"],
+    )
+    size = _clamp(visual["size"] + inten * inten_cfg["size_gain"], 0.0, 1.0)
+
+    return {
+        "shape": visual["shape"],
+        "color": visual["color"],
+        "size": size,
+        "motion": motion,
     }
 
 

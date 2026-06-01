@@ -1,6 +1,6 @@
 {
-  "version": "1.1.0",
-  "description": "SoundShape cross-modal mapping spec. Maps an emotion vector (category, valence, arousal) to a visual specification (shape, color, size, motion). Each channel is grounded in published research; human-readable justification in docs/mapping_rationale.md. Single source of truth, consumed by backend/mapping/engine.py and frontend/src/lib/mapping.ts (synced via scripts/sync_mapping_config.py). NOTE: arousal is signed [-1,+1]; size and saturation map it MONOTONICALLY via (arousal+1)/2 so calm reads small/muted and excited reads large/vivid.",
+  "version": "1.2.0",
+  "description": "SoundShape cross-modal mapping spec. Maps an emotion vector (category, valence, arousal) PLUS interpretable prosody features (jitter, shimmer, intensity, speech rate) to a visual specification (shape, color, size, motion). Each channel is grounded in published research; human-readable justification in docs/mapping_rationale.md. Single source of truth, consumed by backend/mapping/engine.py and frontend/src/lib/mapping.ts (synced via scripts/sync_mapping_config.py). NOTE: arousal is signed [-1,+1]; size and saturation map it MONOTONICALLY via (arousal+1)/2 so calm reads small/muted and excited reads large/vivid. The base visual is set by the emotion vector (from wav2vec2); prosody_modulation then nudges motion/size using the MEASURED PRAAT features so the explicit, interpretable acoustics drive the output too.",
   "shape": {
     "citation": "Angular forms are perceived as threatening, rounded forms as warm/safe: Aronoff et al. (1992); Larson, Aronoff & Stearns (2007). Neural basis: sharp-contoured objects preferentially engage the amygdala (threat): Bar & Neta (2006, 2007). Supported by the Bouba/Kiki sound-shape effect: Köhler (1929); Ramachandran & Hubbard (2001).",
     "by_category": {
@@ -74,5 +74,30 @@
       }
     ],
     "default": { "type": "still", "amplitude": 0.0, "speed": 0.0 }
+  },
+  "prosody_modulation": {
+    "citation": "Connects the MEASURED, interpretable PRAAT/Parselmouth features directly to the visual output (the explainable counterpart to wav2vec2's opaque embedding). INSTABILITY: vocal jitter + shimmer rise with agitation, fear, and stress (Banse & Scherer 1996; Juslin & Laukka 2003) → rendered as visual instability (motion amplitude). INTENSITY: loudness maps to perceptual salience / energy (Spence 2011) → brightness via size. SPEECH RATE: faster speech → faster motion (Spence 2011 temporal correspondence).",
+    "enabled": true,
+    "instability": {
+      "_doc": "normalized( (jitter-jmin)/(jmax-jmin) ) averaged with shimmer; result in [0,1] multiplies motion.amplitude up by amplitude_gain.",
+      "jitter_min": 0.005,
+      "jitter_max": 0.04,
+      "shimmer_min": 0.03,
+      "shimmer_max": 0.15,
+      "amplitude_gain": 0.7,
+      "speed_gain": 0.25
+    },
+    "intensity": {
+      "_doc": "intensity_mean (dB-ish) normalized over [db_min,db_max]; nudges size up by size_gain.",
+      "db_min": 50.0,
+      "db_max": 78.0,
+      "size_gain": 0.12
+    },
+    "speech_rate": {
+      "_doc": "speech_rate_approx (voiced frames/sec, ~20..90) normalized; nudges motion.speed up by speed_gain.",
+      "rate_min": 25.0,
+      "rate_max": 85.0,
+      "speed_gain": 0.2
+    }
   }
 }

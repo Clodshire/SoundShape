@@ -218,6 +218,7 @@ export default function Home() {
         currentFrame?.emotion ??
           source.timeline[0]?.emotion ??
           DEMO_TIMELINE[0].emotion,
+        currentFrame?.prosody,
       ),
     [currentFrame, source.timeline],
   );

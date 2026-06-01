@@ -155,9 +155,9 @@ speech tool:
 - **Sound-magnitude symbolism (Sapir, 1929).** Vowels like /i/ feel "small,"
   /a/ feels "large" — early evidence that acoustic features map onto size.
 
-> A future version can drive size *directly* from measured F0 via the
-> frequency code, instead of routing through arousal. The prosody module
-> already extracts F0.
+> Size is additionally nudged by **measured loudness (intensity)** — see
+> "Prosody modulation" below. A future version can also route measured F0
+> through the frequency code directly.
 
 > Citations: Russell (1980); Ohala (1994); Sapir (1929).
 
@@ -185,11 +185,36 @@ movements stripped of all other cues. We render high-arousal-negative emotion
 as literal *shaking* and low-arousal emotion as *slow drift / sinking*.
 
 **Grounding (supporting).** Spence's (2011) crossmodal review documents the
-general rule that *fast sound ↔ fast motion*. And the acoustic instability we
-imitate — micro-tremor in pitch (jitter) and loudness (shimmer) during hot
-anger and panic fear — is from Banse & Scherer's (1996) acoustic profiles.
+general rule that *fast sound ↔ fast motion*.
 
-> Citations: Pollick et al. (2001); Spence (2011); Banse & Scherer (1996).
+> Citations: Pollick et al. (2001); Spence (2011).
+
+---
+
+## Prosody modulation — the measured signal drives the visual
+
+The four channels above set a *base* visual from the emotion vector (valence,
+arousal, category) predicted by wav2vec2. But wav2vec2's reasoning is opaque.
+SoundShape's distinguishing claim is that it also uses **interpretable,
+measured prosody** — the PRAAT/Parselmouth features. So after the base visual
+is chosen, the **measured acoustics modulate it** (`prosody_modulation` in the
+config; applied identically in backend and frontend):
+
+| Measured feature | Modulates | Direction | Grounding |
+|---|---|---|---|
+| **Jitter + shimmer** (vocal instability) | motion **amplitude** (+ a little speed) | more perturbation → more visual trembling | **Banse & Scherer (1996)**: jitter/shimmer rise with agitation, fear, stress |
+| **Intensity** (loudness) | **size** / brightness | louder → larger, brighter | **Spence (2011)**: loudness ↔ visual salience |
+| **Speech rate** (voiced density) | motion **speed** | faster speech → faster motion | **Spence (2011)**: temporal correspondence |
+
+Each feature is normalized over a documented range and applied with a bounded
+gain (see `config/mapping_config.json → prosody_modulation`), so two utterances
+the model labels with the *same* emotion still look different if one is
+shakier, louder, or faster than the other. This is what makes the visual
+**continuous and prosody-grounded**, not just a lookup from a discrete label —
+and it is the *explainable* path: we can point at the exact measured numbers
+(jitter = 0.035, intensity = 74 dB) behind any frame.
+
+> Citations: Banse & Scherer (1996); Spence (2011); Juslin & Laukka (2003).
 
 ---
 

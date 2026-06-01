@@ -4,6 +4,7 @@ import type {
   HSLColor,
   MotionSpec,
   MotionType,
+  Prosody,
   ShapeKind,
   VisualSpec,
 } from "@/types/emotion";
@@ -46,17 +47,70 @@ interface MappingConfig {
     rules: { when: MotionCondition; motion: MotionSpec }[];
     default: MotionSpec;
   };
+  prosody_modulation?: {
+    enabled?: boolean;
+    instability: {
+      jitter_min: number;
+      jitter_max: number;
+      shimmer_min: number;
+      shimmer_max: number;
+      amplitude_gain: number;
+      speed_gain: number;
+    };
+    intensity: { db_min: number; db_max: number; size_gain: number };
+    speech_rate: { rate_min: number; rate_max: number; speed_gain: number };
+  };
 }
 
 const config = rawConfig as unknown as MappingConfig;
 
-export function mapEmotionToVisual(emotion: Emotion): VisualSpec {
-  return {
+// The base visual comes from the emotion vector (wav2vec2). When measured
+// prosody (PRAAT features) is supplied, prosody_modulation nudges motion/size
+// from the interpretable acoustics — mirrors backend/mapping/engine.py exactly.
+export function mapEmotionToVisual(
+  emotion: Emotion,
+  prosody?: Prosody | null,
+): VisualSpec {
+  const visual: VisualSpec = {
     shape: pickShape(emotion.category),
     color: pickColor(emotion.category, emotion.valence, emotion.arousal),
     size: pickSize(emotion.arousal),
     motion: pickMotion(emotion.category, emotion.valence, emotion.arousal),
   };
+  return prosody ? applyProsody(visual, prosody) : visual;
+}
+
+function norm(x: number, lo: number, hi: number): number {
+  if (hi <= lo) return 0;
+  return clamp((x - lo) / (hi - lo), 0, 1);
+}
+
+function applyProsody(visual: VisualSpec, prosody: Prosody): VisualSpec {
+  const pm = config.prosody_modulation;
+  if (!pm || !pm.enabled) return visual;
+
+  const motion: MotionSpec = { ...visual.motion };
+
+  const inst = pm.instability;
+  const jit = norm(prosody.jitter_local ?? 0, inst.jitter_min, inst.jitter_max);
+  const shi = norm(prosody.shimmer_local ?? 0, inst.shimmer_min, inst.shimmer_max);
+  const instability = (jit + shi) / 2;
+  motion.amplitude = clamp(
+    motion.amplitude * (1 + instability * inst.amplitude_gain),
+    0,
+    1,
+  );
+  motion.speed = clamp(motion.speed * (1 + instability * inst.speed_gain), 0, 1.5);
+
+  const sr = pm.speech_rate;
+  const rate = norm(prosody.speech_rate_approx ?? 0, sr.rate_min, sr.rate_max);
+  motion.speed = clamp(motion.speed * (1 + rate * sr.speed_gain), 0, 1.5);
+
+  const inten = pm.intensity;
+  const loud = norm(prosody.intensity_mean ?? 0, inten.db_min, inten.db_max);
+  const size = clamp(visual.size + loud * inten.size_gain, 0, 1);
+
+  return { shape: visual.shape, color: visual.color, size, motion };
 }
 
 function pickShape(category: string): ShapeKind {
