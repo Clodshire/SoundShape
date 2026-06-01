@@ -26,6 +26,7 @@ Citations
 
 from __future__ import annotations
 
+import os
 from dataclasses import asdict, dataclass
 from functools import lru_cache
 from typing import Optional, Tuple
@@ -40,8 +41,18 @@ from transformers.models.wav2vec2.modeling_wav2vec2 import (
     Wav2Vec2PreTrainedModel,
 )
 
-CATEGORICAL_MODEL = "superb/wav2vec2-base-superb-er"
-DIMENSIONAL_MODEL = "audeering/wav2vec2-large-robust-12-ft-emotion-msp-dim"
+# Model IDs are env-overridable so a better (e.g. Korean fine-tuned or
+# multilingual) checkpoint can be swapped in with zero code change:
+#     SOUNDSHAPE_CATEGORICAL_MODEL=...  SOUNDSHAPE_DIMENSIONAL_MODEL=...
+# Defaults are the validated English checkpoints. See docs/model_evaluation.md
+# for the multilingual evaluation and why these remain the defaults.
+CATEGORICAL_MODEL = os.environ.get(
+    "SOUNDSHAPE_CATEGORICAL_MODEL", "superb/wav2vec2-base-superb-er"
+)
+DIMENSIONAL_MODEL = os.environ.get(
+    "SOUNDSHAPE_DIMENSIONAL_MODEL",
+    "audeering/wav2vec2-large-robust-12-ft-emotion-msp-dim",
+)
 
 # Approximate Russell-1980 V/A placements for the 4 categorical labels.
 # Used as a fallback when the dimensional model isn't loaded.
