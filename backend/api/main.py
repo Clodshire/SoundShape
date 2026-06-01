@@ -8,6 +8,8 @@ Endpoints:
     POST /process        — multipart upload, returns full timeline JSON (accurate)
     POST /process/stream — multipart upload, NDJSON stream of segments as ready
                            (progressive: head first → start playback early)
+    POST /process/stream/url — same, but ingests a media URL (yt-dlp) — used by
+                           the Chrome extension (YouTube). No DRM sites.
 """
 
 from __future__ import annotations
@@ -161,6 +163,52 @@ def process_stream(
                 upload_path.unlink(missing_ok=True)
             except OSError:
                 pass
+
+    return StreamingResponse(
+        ndjson(),
+        media_type="application/x-ndjson",
+        headers={"Cache-Control": "no-cache", "X-Accel-Buffering": "no"},
+    )
+
+
+@app.post("/process/stream/url")
+def process_stream_url(
+    url: str = Form(...),
+    language: Optional[str] = Form(default=None),
+    model_size: str = Form(default=STREAM_MODEL),
+) -> StreamingResponse:
+    """Ingest a media URL (yt-dlp), then progressively stream the timeline.
+
+    The Chrome extension reads the YouTube page's URL and POSTs it here.
+    Emits a 'status: downloading' event first (the download blocks for a
+    moment), then the same metadata/segment/done stream as /process/stream.
+    """
+    logger.info("Stream-URL request: %s (model=%s)", url, model_size)
+
+    def ndjson() -> Iterator[str]:
+        from backend.pipeline import audio_io, fetch
+
+        dl_dir = None
+        try:
+            yield json.dumps({"type": "status", "stage": "downloading"}) + "\n"
+            try:
+                audio_path = fetch.download_audio(url)
+            except fetch.TooLongError as e:
+                yield json.dumps({"type": "error", "message": str(e)}) + "\n"
+                return
+            except Exception as e:  # noqa: BLE001
+                yield json.dumps(
+                    {"type": "error", "message": f"download failed: {e}"}
+                ) + "\n"
+                return
+            dl_dir = audio_path.parent
+            for event in stream_timeline(
+                audio_path, language=language, model_size=model_size
+            ):
+                yield json.dumps(event, ensure_ascii=False) + "\n"
+        finally:
+            if dl_dir is not None:
+                audio_io.cleanup_dir(dl_dir)
 
     return StreamingResponse(
         ndjson(),
