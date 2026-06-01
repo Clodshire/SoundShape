@@ -1,0 +1,61 @@
+<!doctype html>
+<html>
+  <head>
+    <meta charset="utf-8" />
+    <style>
+      body {
+        width: 260px;
+        margin: 0;
+        padding: 16px;
+        font-family: system-ui, sans-serif;
+        background: #0b0b0f;
+        color: #eee;
+      }
+      h1 {
+        font-size: 15px;
+        margin: 0 0 6px;
+        background: linear-gradient(135deg, #a78bfa, #f472b6);
+        -webkit-background-clip: text;
+        background-clip: text;
+        -webkit-text-fill-color: transparent;
+      }
+      p {
+        font-size: 12px;
+        line-height: 1.5;
+        color: #aaa;
+        margin: 6px 0;
+      }
+      code {
+        background: #1c1c22;
+        padding: 1px 5px;
+        border-radius: 4px;
+        font-size: 11px;
+      }
+      .ok {
+        color: #34d399;
+      }
+      .bad {
+        color: #f87171;
+      }
+    </style>
+  </head>
+  <body>
+    <h1>SoundShape</h1>
+    <p>Open a YouTube video, then click the floating <b>✦ SoundShape</b> button
+      on the player to overlay the emotion field.</p>
+    <p id="status">Checking backend…</p>
+    <p>Backend must be running locally:<br /><code>uvicorn backend.api.main:app --port 8000</code></p>
+    <script>
+      fetch("http://localhost:8000/health")
+        .then((r) => (r.ok ? r.json() : Promise.reject()))
+        .then((d) => {
+          document.getElementById("status").innerHTML =
+            '<span class="ok">● backend connected</span> (v' + d.version + ")";
+        })
+        .catch(() => {
+          document.getElementById("status").innerHTML =
+            '<span class="bad">● backend offline</span> — start uvicorn on :8000';
+        });
+    </script>
+  </body>
+</html>

@@ -37,12 +37,17 @@ app = FastAPI(
     description="Audio in, emotion-visualization timeline JSON out.",
 )
 
-# CORS — Next.js dev server runs on :3000.
+# CORS — Next.js dev server (:3000) + the Chrome extension running on YouTube.
+# (http://localhost is treated as a secure origin, so the https YouTube page is
+# allowed to call it without mixed-content blocking.)
 app.add_middleware(
     CORSMiddleware,
     allow_origins=[
         "http://localhost:3000",
         "http://127.0.0.1:3000",
+        "https://www.youtube.com",
+        "https://youtube.com",
+        "https://m.youtube.com",
     ],
     allow_credentials=True,
     allow_methods=["GET", "POST", "OPTIONS"],

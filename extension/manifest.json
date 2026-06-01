@@ -1,0 +1,22 @@
+{
+  "manifest_version": 3,
+  "name": "SoundShape — emotion overlay",
+  "version": "0.1.0",
+  "description": "Captions tell you what was said. SoundShape shows you how — an emotion-prosody overlay for YouTube.",
+  "permissions": ["activeTab", "storage"],
+  "host_permissions": [
+    "*://*.youtube.com/*",
+    "http://localhost:8000/*"
+  ],
+  "action": {
+    "default_popup": "popup.html",
+    "default_title": "SoundShape"
+  },
+  "content_scripts": [
+    {
+      "matches": ["*://www.youtube.com/watch*", "*://youtube.com/watch*"],
+      "js": ["content.js"],
+      "run_at": "document_idle"
+    }
+  ]
+}
