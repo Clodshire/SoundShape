@@ -63,16 +63,55 @@ CATEGORY_TO_VA: dict[str, tuple[float, float]] = {
     "sad": (-0.6, -0.4),
 }
 
+# Short categorical labels → the frontend's EmotionCategory enum (long names).
+SHORT_TO_LONG = {"ang": "anger", "hap": "joy", "neu": "neutral", "sad": "sadness"}
+
+# Valence/arousal calibration for the audeering dimensional model.
+# The raw model skews systematically negative and compresses its range. These
+# affine coefficients were fit by least squares against canonical Russell V/A
+# targets over the 120 RAVDESS clips (see docs/model_evaluation.md). After
+# calibration neutral sits ≈ 0 and anger reads clearly negative.
+VALENCE_CALIB = (1.9332, 0.5106)  # (scale, offset)
+AROUSAL_CALIB = (1.0414, 0.0998)
+
+
+def _calibrate(x: float, coeff: tuple[float, float]) -> float:
+    return max(-1.0, min(1.0, coeff[0] * x + coeff[1]))
+
+
+def derive_category(
+    model_label: str, valence: float, arousal: float, dominance: Optional[float]
+) -> str:
+    """Hybrid category for the *visual* (shape/hue), in long-name form.
+
+    Uses calibrated V/A (the better-ordered signal) to fill the categorical
+    model's gaps — it never predicts 'sad' and is weak overall — while falling
+    back to the categorical label where V/A is ambiguous. On RAVDESS this
+    hybrid scores 55% vs the categorical model's 51%, with anger recall 100%
+    and sadness recovered from 0% → 38% (docs/model_evaluation.md).
+    Anger vs fear (both negative + high-arousal) is split by dominance.
+    """
+    if arousal < -0.05 and valence < -0.05:
+        return "sadness"
+    if arousal > 0.2 and valence < -0.1:
+        return "anger" if (dominance is None or dominance >= 0) else "fear"
+    if valence > 0.05 and arousal > 0.0:
+        return "joy"
+    if abs(valence) < 0.15 and abs(arousal) < 0.2:
+        return "neutral"
+    return SHORT_TO_LONG.get(model_label, "neutral")
+
 
 @dataclass
 class EmotionResult:
     """Unified emotion output — matches the frontend's Emotion type."""
 
-    category: str  # one of: ang, hap, neu, sad
-    category_confidence: float  # [0, 1]
-    valence: float  # [-1, +1]
-    arousal: float  # [-1, +1]
+    category: str  # long name (anger/joy/sadness/fear/surprise/neutral…), derived
+    category_confidence: float  # [0, 1] — categorical model confidence
+    valence: float  # [-1, +1] (calibrated)
+    arousal: float  # [-1, +1] (calibrated)
     dominance: Optional[float]  # [-1, +1] when dimensional model was used
+    model_label: str = "neu"  # raw categorical short code, for reference
 
     def to_dict(self) -> dict:
         return asdict(self)
@@ -160,7 +199,7 @@ def _load_wave_16k(wav_path: str) -> np.ndarray:
 
 
 def classify_dimensional(wav_path: str) -> Tuple[float, float, float]:
-    """Return (valence, arousal, dominance) each in [-1, +1]."""
+    """Return calibrated (valence, arousal, dominance), each in [-1, +1]."""
     processor, model = _dimensional_model()
     signal = _load_wave_16k(wav_path)
     inputs = processor(
@@ -169,9 +208,12 @@ def classify_dimensional(wav_path: str) -> Tuple[float, float, float]:
     with torch.no_grad():
         out = model(inputs["input_values"]).squeeze(0).numpy()
     # audeering model output order: arousal, dominance, valence ∈ [0, 1]
-    arousal = (float(out[0]) - 0.5) * 2
+    arousal_raw = (float(out[0]) - 0.5) * 2
     dominance = (float(out[1]) - 0.5) * 2
-    valence = (float(out[2]) - 0.5) * 2
+    valence_raw = (float(out[2]) - 0.5) * 2
+    # Correct the model's systematic negative bias + range compression.
+    valence = _calibrate(valence_raw, VALENCE_CALIB)
+    arousal = _calibrate(arousal_raw, AROUSAL_CALIB)
     return valence, arousal, dominance
 
 
@@ -183,18 +225,21 @@ def classify_dimensional(wav_path: str) -> Tuple[float, float, float]:
 def classify_emotion(
     wav_path: str, use_dimensional: bool = True
 ) -> EmotionResult:
-    category, confidence = classify_categorical(wav_path)
+    model_label, confidence = classify_categorical(wav_path)
     if use_dimensional:
         valence, arousal, dominance = classify_dimensional(wav_path)
+        category = derive_category(model_label, valence, arousal, dominance)
     else:
-        valence, arousal = CATEGORY_TO_VA[category]
+        valence, arousal = CATEGORY_TO_VA[model_label]
         dominance = None
+        category = SHORT_TO_LONG.get(model_label, "neutral")
     return EmotionResult(
         category=category,
         category_confidence=confidence,
         valence=valence,
         arousal=arousal,
         dominance=dominance,
+        model_label=model_label,
     )
 
 

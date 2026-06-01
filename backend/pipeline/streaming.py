@@ -30,7 +30,6 @@ from backend.pipeline import asr, audio_io
 from backend.pipeline.chunker import find_chunk_boundaries
 from backend.pipeline.emotion import classify_emotion
 from backend.pipeline.prosody import extract_prosody
-from backend.pipeline.timeline import SHORT_TO_LONG
 
 logger = logging.getLogger(__name__)
 
@@ -95,10 +94,9 @@ def stream_timeline(
                 finally:
                     audio_io.safe_unlink(seg_path)
 
-                short = emo.category
                 emotion_payload = {
-                    "category": SHORT_TO_LONG.get(short, short),
-                    "category_short": short,
+                    "category": emo.category,  # derived long name
+                    "category_short": emo.model_label,
                     "category_confidence": emo.category_confidence,
                     "valence": emo.valence,
                     "arousal": emo.arousal,

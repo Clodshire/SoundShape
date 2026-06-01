@@ -49,14 +49,9 @@ from backend.pipeline.prosody import extract_prosody
 
 logger = logging.getLogger(__name__)
 
-# Map the categorical model's short codes to the frontend's
-# `EmotionCategory` enum values (see frontend/src/types/emotion.ts).
-SHORT_TO_LONG = {
-    "ang": "anger",
-    "hap": "joy",
-    "neu": "neutral",
-    "sad": "sadness",
-}
+# The category is now derived (long-form) inside classify_emotion; re-exported
+# for backward compatibility with any importers.
+from backend.pipeline.emotion import SHORT_TO_LONG  # noqa: E402,F401
 
 
 def build_timeline(
@@ -118,12 +113,9 @@ def build_timeline(
             prosody_result = extract_prosody(str(slice_path))
             emotion_result = classify_emotion(str(slice_path))
 
-            short = emotion_result.category
-            long_name = SHORT_TO_LONG.get(short, short)
-
             emotion_payload = {
-                "category": long_name,
-                "category_short": short,
+                "category": emotion_result.category,  # derived long name
+                "category_short": emotion_result.model_label,
                 "category_confidence": emotion_result.category_confidence,
                 "valence": emotion_result.valence,
                 "arousal": emotion_result.arousal,

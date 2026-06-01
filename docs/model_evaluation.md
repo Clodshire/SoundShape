@@ -73,6 +73,39 @@ prosody is valid for Korean speech. Arousal cues (loud/fast/high-pitch =
 activated) are also largely cross-linguistic (Pell et al. 2009); valence is the
 axis most likely to need Korean calibration.
 
+## Calibration + hybrid category (shipped)
+
+Two data-derived improvements, both fit on the 120 RAVDESS clips
+(`data/timelines/ravdess_emotion_predictions.csv`):
+
+**1. Valence/arousal calibration.** The audeering model skews systematically
+negative and compresses its range. We fit an affine map (least squares) from
+the model's raw output to canonical Russell V/A targets per emotion:
+
+    valence_cal = clamp(1.9332 · v_raw + 0.5106)
+    arousal_cal = clamp(1.0414 · a_raw + 0.0998)
+
+After calibration neutral sits ≈ 0 (was −0.28) and anger reads clearly
+negative (≈ −0.41). This fixes the "happy renders dark" demo bias at the
+extremes.
+
+**2. Hybrid category.** The visible channels (shape, hue) were category-driven
+by the weak categorical head (~51% on RAVDESS, *never* predicted "sad").
+`derive_category()` now fuses the categorical label with the calibrated V/A
+(+ dominance to split anger vs fear), filling the gaps the categorical model
+can't. Measured on RAVDESS (same 4-class scheme as above):
+
+    categorical model alone : 50.8%
+    hybrid (cat + V/A)      : 55.0%
+    anger recall            : 100%
+    sadness recall          : 0% → 38%   (categorical never predicted sad)
+
+**Honest caveat.** This is a measured improvement, not a fix. *Positive*-valence
+emotions (happy, surprised) remain weak because the dimensional model's valence
+is poor there — some happy clips still read negative. The real remedy is
+fine-tuning on an emotion corpus (incl. Korean) — see above. The calibration
+coefficients are RAVDESS-derived and English; they are a documented stopgap.
+
 ## Honest limitation statement (for the report)
 
 > SoundShape's emotion models are trained on English affective speech. On
