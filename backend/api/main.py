@@ -4,22 +4,26 @@ Run locally:
     uvicorn backend.api.main:app --reload --port 8000
 
 Endpoints:
-    GET  /health        — liveness check
-    POST /process       — multipart upload, returns timeline JSON
+    GET  /health         — liveness check
+    POST /process        — multipart upload, returns full timeline JSON (accurate)
+    POST /process/stream — multipart upload, NDJSON stream of segments as ready
+                           (progressive: head first → start playback early)
 """
 
 from __future__ import annotations
 
+import json
 import logging
 import tempfile
 import traceback
 from pathlib import Path
-from typing import Optional
+from typing import Iterator, Optional
 
 from fastapi import FastAPI, File, Form, HTTPException, UploadFile
 from fastapi.middleware.cors import CORSMiddleware
-from fastapi.responses import JSONResponse
+from fastapi.responses import JSONResponse, StreamingResponse
 
+from backend.pipeline.streaming import STREAM_MODEL, stream_timeline
 from backend.pipeline.timeline import build_timeline
 
 logging.basicConfig(level=logging.INFO, format="%(levelname)s %(message)s")
@@ -42,6 +46,26 @@ app.add_middleware(
     allow_methods=["GET", "POST", "OPTIONS"],
     allow_headers=["*"],
 )
+
+
+@app.on_event("startup")
+def prewarm() -> None:
+    """Warm the streaming model + emotion/prosody on startup so the first real
+    request doesn't pay the cold model-load cost (cuts first-prebuffer latency).
+    """
+    sample = Path(__file__).resolve().parents[2] / "data" / "samples" / "test.wav"
+    if not sample.exists():
+        return
+    try:
+        from backend.pipeline import asr, emotion, prosody
+
+        logger.info("Pre-warming models (%s)…", STREAM_MODEL)
+        asr.transcribe(str(sample), model_size=STREAM_MODEL)
+        emotion.classify_emotion(str(sample))
+        prosody.extract_prosody(str(sample))
+        logger.info("Pre-warm complete.")
+    except Exception as e:  # noqa: BLE001
+        logger.warning("Pre-warm skipped: %s", e)
 
 
 @app.get("/health")
@@ -97,3 +121,49 @@ async def process(
         timeline["metadata"]["language"],
     )
     return JSONResponse(timeline)
+
+
+@app.post("/process/stream")
+def process_stream(
+    file: UploadFile = File(...),
+    language: Optional[str] = Form(default=None),
+    model_size: str = Form(default=STREAM_MODEL),
+) -> StreamingResponse:
+    """Progressive processing — NDJSON stream, one event per line.
+
+    Emits a metadata event, then a segment event as each utterance is computed
+    (head first), then a done event. Lets the client start playback after a
+    short prebuffer while the rest is processed ahead. Sync route → Starlette
+    iterates the (CPU-heavy, sync) generator in a threadpool.
+
+    Default model is `small` for a low prebuffer; pass model_size to override.
+    """
+    if not file.filename:
+        raise HTTPException(status_code=400, detail="No filename")
+
+    suffix = Path(file.filename).suffix or ".bin"
+    with tempfile.NamedTemporaryFile(
+        prefix="soundshape_stream_", suffix=suffix, delete=False
+    ) as tmp:
+        tmp.write(file.file.read())
+        upload_path = Path(tmp.name)
+
+    logger.info("Stream request: %s → %s (model=%s)", file.filename, upload_path, model_size)
+
+    def ndjson() -> Iterator[str]:
+        try:
+            for event in stream_timeline(
+                upload_path, language=language, model_size=model_size
+            ):
+                yield json.dumps(event, ensure_ascii=False) + "\n"
+        finally:
+            try:
+                upload_path.unlink(missing_ok=True)
+            except OSError:
+                pass
+
+    return StreamingResponse(
+        ndjson(),
+        media_type="application/x-ndjson",
+        headers={"Cache-Control": "no-cache", "X-Accel-Buffering": "no"},
+    )
