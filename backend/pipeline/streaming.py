@@ -90,7 +90,9 @@ def stream_timeline(
                 seg_path = audio_io.slice_to_temp_wav(wav_path, abs_start, abs_end)
                 try:
                     prosody = extract_prosody(str(seg_path)).features.to_dict()
-                    emo = classify_emotion(str(seg_path))
+                    emo = classify_emotion(
+                        str(seg_path), text=seg.text, language=detected_lang
+                    )
                 finally:
                     audio_io.safe_unlink(seg_path)
 

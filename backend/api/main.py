@@ -65,11 +65,13 @@ def prewarm() -> None:
         return
     try:
         from backend.pipeline import asr, emotion, prosody
+        from backend.pipeline.text_sentiment import text_valence
 
         logger.info("Pre-warming models (%s)…", STREAM_MODEL)
         asr.transcribe(str(sample), model_size=STREAM_MODEL)
-        emotion.classify_emotion(str(sample))
+        emotion.classify_emotion(str(sample), text="warmup")
         prosody.extract_prosody(str(sample))
+        text_valence("warmup")
         logger.info("Pre-warm complete.")
     except Exception as e:  # noqa: BLE001
         logger.warning("Pre-warm skipped: %s", e)

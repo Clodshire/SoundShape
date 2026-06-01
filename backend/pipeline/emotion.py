@@ -79,6 +79,49 @@ def _calibrate(x: float, coeff: tuple[float, float]) -> float:
     return max(-1.0, min(1.0, coeff[0] * x + coeff[1]))
 
 
+# ── Text tie-breaker for valence (prosody stays primary) ──
+# Text valence is consulted ONLY when the acoustic valence is in this near-zero
+# band; a confident tone (|v| ≥ band) is never overridden, so sarcasm (negative
+# tone + positive words) is preserved.
+TEXT_FUSION = os.environ.get("SOUNDSHAPE_TEXT_FUSION", "1") != "0"
+VALENCE_UNCERTAIN_BAND = 0.2
+TEXT_MIN_CONF = 0.5
+TEXT_MAX_PULL = 0.5
+# Languages where the text-sentiment model is reliable. Korean is excluded for
+# now: the multilingual model mislabels clear Korean negatives as positive, so
+# fusing it would CORRUPT valence for our primary audience. Re-enable once a
+# Korean-validated sentiment model is in place (env-overridable).
+SUPPORTED_TEXT_LANGS = set(
+    filter(None, os.environ.get("SOUNDSHAPE_TEXT_LANGS", "en").split(","))
+)
+
+
+def fuse_valence(
+    acoustic_v: float, text: Optional[str], language: Optional[str] = None
+) -> float:
+    """Nudge valence toward the text only when the voice is unsure.
+
+    Gated: applies only for languages the text model handles reliably, and only
+    when the acoustic valence is in the near-zero uncertain band (so a confident
+    tone — e.g. sarcasm — is never overridden).
+    """
+    if not TEXT_FUSION or not text:
+        return acoustic_v
+    if language is not None and language not in SUPPORTED_TEXT_LANGS:
+        return acoustic_v  # untrusted language → leave the voice's read alone
+    if abs(acoustic_v) >= VALENCE_UNCERTAIN_BAND:
+        return acoustic_v  # voice is confident → trust the tone (sarcasm-safe)
+    from backend.pipeline.text_sentiment import text_valence
+
+    tv, tconf = text_valence(text)
+    if tconf < TEXT_MIN_CONF:
+        return acoustic_v
+    # Pull is strongest at v≈0 and fades to 0 at the band edge.
+    uncertainty = 1.0 - abs(acoustic_v) / VALENCE_UNCERTAIN_BAND
+    fused = acoustic_v + uncertainty * tv * tconf * TEXT_MAX_PULL
+    return max(-1.0, min(1.0, fused))
+
+
 def derive_category(
     model_label: str, valence: float, arousal: float, dominance: Optional[float]
 ) -> str:
@@ -223,11 +266,17 @@ def classify_dimensional(wav_path: str) -> Tuple[float, float, float]:
 
 
 def classify_emotion(
-    wav_path: str, use_dimensional: bool = True
+    wav_path: str,
+    text: Optional[str] = None,
+    language: Optional[str] = None,
+    use_dimensional: bool = True,
 ) -> EmotionResult:
     model_label, confidence = classify_categorical(wav_path)
     if use_dimensional:
         valence, arousal, dominance = classify_dimensional(wav_path)
+        # Text tie-breaker (only nudges when the acoustic valence is uncertain,
+        # and only for languages the text model handles reliably).
+        valence = fuse_valence(valence, text, language)
         category = derive_category(model_label, valence, arousal, dominance)
     else:
         valence, arousal = CATEGORY_TO_VA[model_label]

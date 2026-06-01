@@ -106,6 +106,34 @@ is poor there — some happy clips still read negative. The real remedy is
 fine-tuning on an emotion corpus (incl. Korean) — see above. The calibration
 coefficients are RAVDESS-derived and English; they are a documented stopgap.
 
+## Text tie-breaker for valence (prosody-first)
+
+The acoustic models are weak at *valence* (positive vs. negative) — a field-wide
+"valence problem," since positivity lives more in words/faces than in sound.
+Text is strong exactly there, so we use it as a **gated tie-breaker**:
+
+- The voice (acoustic valence) is always primary.
+- Text valence is consulted **only when the acoustic valence is near zero**
+  (`|v| < 0.2`) — i.e. when the voice genuinely can't tell positive from
+  negative. A *confident* tone is never overridden, so **sarcasm is preserved**
+  (a clearly bitter "great" stays negative).
+
+Verified behavior (`fuse_valence`):
+
+| case | acoustic v | → fused v |
+|---|---|---|
+| uncertain voice + positive words (EN) | −0.05 | **+0.31** |
+| uncertain voice + negative words (EN) | +0.05 | **−0.29** |
+| confident negative tone + positive words (sarcasm, EN) | −0.55 | −0.55 (unchanged) |
+| Korean (any) | −0.05 | −0.05 (gated off) |
+
+**Language gating — important.** The multilingual text model is reliable on
+English but **mislabels clear Korean negatives as positive** (e.g. "이건 정말
+최악이야" → +0.42). Fusing it would *corrupt* valence for our primary audience,
+so text fusion is **English-only for now** (`SOUNDSHAPE_TEXT_LANGS`, default
+`en`) and a no-op otherwise. Korean text fusion awaits a Korean-validated
+sentiment model. This keeps the feature strictly net-positive.
+
 ## Honest limitation statement (for the report)
 
 > SoundShape's emotion models are trained on English affective speech. On

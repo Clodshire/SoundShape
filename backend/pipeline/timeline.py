@@ -111,7 +111,9 @@ def build_timeline(
             temp_slices.append(slice_path)
 
             prosody_result = extract_prosody(str(slice_path))
-            emotion_result = classify_emotion(str(slice_path))
+            emotion_result = classify_emotion(
+                str(slice_path), text=seg.text, language=transcription.language
+            )
 
             emotion_payload = {
                 "category": emotion_result.category,  # derived long name
