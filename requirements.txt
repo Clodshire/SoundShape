@@ -42,6 +42,7 @@ httptools==0.8.0
 httpx==0.28.1
 huggingface_hub==1.16.4
 idna==3.16
+iniconfig==2.3.0
 ipykernel==7.2.0
 ipython==9.13.0
 ipython_pygments_lexers==1.1.1
@@ -99,6 +100,7 @@ parso==0.8.7
 pexpect==4.9.0
 pillow==12.2.0
 platformdirs==4.9.6
+pluggy==1.6.0
 pooch==1.9.0
 praat-parselmouth==0.4.7
 prometheus_client==0.25.0
@@ -112,6 +114,7 @@ pydantic==2.13.4
 pydantic_core==2.46.4
 Pygments==2.20.0
 pyparsing==3.3.2
+pytest==9.0.3
 python-dateutil==2.9.0.post0
 python-dotenv==1.2.2
 python-json-logger==4.1.0
