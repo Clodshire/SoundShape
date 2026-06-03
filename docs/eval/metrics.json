@@ -1,0 +1,12 @@
+{
+  "n_clips": 120,
+  "actors": [
+    "01",
+    "02"
+  ],
+  "baseline_4class_acc": 0.5083,
+  "hybrid_4class_acc": 0.55,
+  "valence_r": 0.422,
+  "arousal_r": 0.732,
+  "note": "RAVDESS, acoustic-only (text fusion not exercised \u2014 fixed neutral sentences)."
+}
