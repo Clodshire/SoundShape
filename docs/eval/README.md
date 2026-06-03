@@ -42,6 +42,42 @@ Anger — the highest-stakes, highest-arousal emotion — is detected most relia
   emotion. The vertical (arousal) separation vs. horizontal (valence) overlap
   is the visual proof of the r = 0.73 / 0.42 split.
 
+## Trained classifier (the accuracy ceiling, speaker-independent)
+
+Beyond the zero-shot baseline, we trained a lightweight classifier on features
+(1024-d wav2vec2 embedding + 14 PRAAT prosody features) and evaluated it
+**speaker-independently** — `GroupKFold` by actor, 8 actors / 480 clips, so
+every test clip comes from a voice the model never trained on (no leakage).
+No GPU; it's `StandardScaler → PCA(0.95) → linear SVM`. Reproduce:
+`python scripts/extract_features.py && python scripts/train_classifier.py`.
+
+| Metric | Zero-shot (off-the-shelf) | **Trained (speaker-independent)** |
+|---|---|---|
+| 4-class accuracy | 55.0% | **79.8%** |
+| 8-class accuracy | — | **74.2%** (macro-F1 0.74) |
+
+Per-class F1 (8-class): angry **0.87**, fearful 0.82, surprised 0.77, happy
+0.72, disgust 0.72, neutral 0.71, calm 0.70, sad 0.61. The previously weak
+classes improved sharply (happy 0.52→0.72, sad 0.35→0.61). Remaining confusions
+(calm↔sad, happy↔surprised) are the same ones humans make on RAVDESS.
+
+`trained_confusion_8.png` / `trained_confusion_4.png` show the matrices.
+
+**Report both numbers, honestly:**
+- **55% zero-shot** = generalization (untrained, cross-dataset) — what you'd get
+  on unseen content out of the box.
+- **80% trained** = capability ceiling on RAVDESS with proper speaker-
+  independent validation.
+
+> Caveat: the trained classifier is **in-domain (English, acted RAVDESS)**. It
+> is NOT yet validated on Korean or real media, and may not transfer there — so
+> it is saved (`backend/models/emotion_clf.joblib`) and reported as a capability
+> result, not silently swapped into production. Generalizing it needs diverse +
+> Korean training data (AIHub/KEMDy) — the documented next step.
+
 ## Limitations
-- N = 120, 2 actors, English. A larger multi-actor + Korean evaluation is the
-  next step (Korean needs a labeled set such as AIHub/KEMDy).
+- Zero-shot baseline: N = 120, 2 actors. Trained eval: N = 480, 8 actors,
+  English only. Korean evaluation needs a labeled set (AIHub/KEMDy).
+- Cached features (`data/timelines/ravdess_features.npz`) and the trained model
+  (`backend/models/emotion_clf.joblib`) are git-ignored but regenerate from the
+  two scripts above.

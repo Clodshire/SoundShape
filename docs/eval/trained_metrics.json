@@ -1,0 +1,12 @@
+{
+  "method": "embedding(1024)+prosody(15) \u2192 StandardScaler+PCA(0.95)+linear SVM",
+  "validation": "GroupKFold by actor (8 folds) \u2014 speaker-independent",
+  "n_clips": 480,
+  "n_actors": 8,
+  "trained_8class_acc": 0.7417,
+  "trained_8class_macro_f1": 0.7376,
+  "trained_4class_acc": 0.7979,
+  "trained_4class_macro_f1": 0.7658,
+  "zero_shot_4class_acc": 0.55,
+  "model_path": "backend/models/emotion_clf.joblib"
+}
