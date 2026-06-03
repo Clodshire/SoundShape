@@ -1,0 +1,17 @@
+{
+  "dataset": "AIHub 감정 분류를 위한 대화 음성 (5차년도_2차)",
+  "n_clips": 1750,
+  "n_per_class": 250,
+  "validation": "stratified 5-fold (NOT speaker-independent — no speaker IDs)",
+  "accuracy": 0.436,
+  "macro_f1": 0.4362,
+  "classes": [
+    "angry",
+    "disgust",
+    "fear",
+    "happiness",
+    "neutral",
+    "sadness",
+    "surprise"
+  ]
+}

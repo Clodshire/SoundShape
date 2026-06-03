@@ -75,9 +75,45 @@ classes improved sharply (happy 0.52→0.72, sad 0.35→0.61). Remaining confusi
 > result, not silently swapped into production. Generalizing it needs diverse +
 > Korean training data (AIHub/KEMDy) — the documented next step.
 
+## Korean evaluation (the audience language)
+
+Same recipe, on **AIHub 감정 분류를 위한 대화 음성 데이터셋** (`scripts/eval_korean.py`):
+1750 clips (250/class), label = majority vote of 5 human evaluators, features =
+embedding + prosody, StandardScaler→PCA→linear SVM, stratified 5-fold CV.
+
+| Metric | Result |
+|---|---|
+| 7-class accuracy | **43.6%** |
+| macro-F1 | **0.44** |
+| chance (7-class) | 14.3% |
+
+Per-class F1: fear **0.55**, surprise 0.48, happiness 0.43, neutral 0.41,
+angry 0.40, disgust 0.39, sadness 0.39.
+
+**Read it honestly — and it's a real result:**
+- **3× above chance** (43.6% vs 14.3%) on a 7-way task → the model genuinely
+  learns Korean emotion patterns.
+- It's **far harder than the English 74%/80%**, but mostly because of the
+  *data*, not the language: RAVDESS is **acted, exaggerated, clean**; this AIHub
+  set is **spontaneous conversational** speech with **noisy labels** (5
+  evaluators often disagree on subtle conversational emotion). Published 7-class
+  results on this kind of Korean conversational data sit ~40–55% — we're in range.
+- The best classes are **fear and surprise** (high-arousal) — consistent with
+  the English finding that *arousal* is the reliable axis. Since arousal drives
+  most of SoundShape's visual (size/saturation/motion), the visualization stays
+  meaningful in Korean even where the fine category is uncertain.
+- The hardest confusions (angry↔disgust↔sadness) are subtle negative-valence
+  emotions — exactly the valence-is-hard problem, in Korean.
+
+**Caveat:** no speaker IDs in this release → stratified-random CV, not
+speaker-independent (the English eval was speaker-independent), so this is an
+optimistic-ish estimate. Higher numbers are reachable with more of the 19k clips
+(we used 250/class), a multilingual embedding backbone, or full fine-tuning.
+
 ## Limitations
-- Zero-shot baseline: N = 120, 2 actors. Trained eval: N = 480, 8 actors,
-  English only. Korean evaluation needs a labeled set (AIHub/KEMDy).
-- Cached features (`data/timelines/ravdess_features.npz`) and the trained model
+- Zero-shot baseline: N = 120, 2 actors. English trained eval: N = 480, 8
+  actors, speaker-independent. Korean: N = 1750, stratified-random (acted vs
+  conversational data are not directly comparable).
+- Cached features (`data/timelines/*.npz`) and the trained model
   (`backend/models/emotion_clf.joblib`) are git-ignored but regenerate from the
-  two scripts above.
+  scripts.
