@@ -13,3 +13,11 @@ participant_id,form,clip_id,condition,chosen_emotion,tone,confidence
 1-3,1,6,B,happy,,5
 1-4,1,7,B,neutral,,4
 1-4,1,7,B,sad,,2
+1-5,1,1,A,neutral,,4
+1-5,1,1,B,afraid,,2
+1-5,1,2,B,angry,,4
+1-5,1,2,A,surprised,,2
+1-6,1,1,A,sad,,5
+1-6,1,1,B,sad,,5
+1-6,1,2,A,surprised,,4
+1-6,1,2,B,angry,,3
