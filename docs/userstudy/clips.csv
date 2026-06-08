@@ -1,9 +1,9 @@
 clip_id,true_emotion,incongruent,source_note
-1,sad,no,FILL IN — e.g. your "괜찮아" sad-tone recording
-2,angry,no,FILL IN
-3,happy,no,FILL IN
-4,neutral,yes,"FILL IN — sincere-vs-sarcastic case (e.g. ""괜찮아"" sarcastic)"
-5,afraid,no,FILL IN
-6,surprised,no,FILL IN
-7,sad,yes,FILL IN — suppressed sadness behind calm words
-8,happy,no,FILL IN
+1,sad,no,clip 1
+2,angry,no,clip 2
+3,happy,no,clip 3
+4,neutral,yes,clip 4 — sincere-vs-sarcastic case
+5,afraid,no,clip 5
+6,surprised,no,clip 6
+7,sad,yes,clip 7 — suppressed sadness behind calm words
+8,happy,no,clip 8
