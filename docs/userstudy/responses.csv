@@ -1,3 +1,15 @@
 participant_id,form,clip_id,condition,chosen_emotion,tone,confidence
-EXAMPLE_delete_me,1,1,B,sad,,4
-EXAMPLE_delete_me,1,5,A,surprised,,2
+1-1,1,1,A,afraid,,3
+1-1,1,2,A,angry,,4
+1-1,1,1,B,sad,,2
+1-1,1,2,B,angry,,5
+1-2,1,3,A,happy,,3
+1-2,1,3,B,happy,,2
+1-2,1,4,B,neutral,,4
+1-2,1,4,A,sad,,2
+1-3,1,5,A,sad,,2
+1-3,1,5,A,sad,,4
+1-3,1,6,A,happy,,3
+1-3,1,6,B,happy,,5
+1-4,1,7,B,neutral,,4
+1-4,1,7,B,sad,,2
