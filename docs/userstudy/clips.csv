@@ -1,0 +1,9 @@
+clip_id,true_emotion,incongruent,source_note
+1,sad,no,clip 1
+2,angry,no,clip 2
+3,happy,no,clip 3
+4,neutral,yes,clip 4 — sincere-vs-sarcastic case
+5,afraid,no,clip 5
+6,surprised,no,clip 6
+7,sad,yes,clip 7 — suppressed sadness behind calm words
+8,happy,no,clip 8

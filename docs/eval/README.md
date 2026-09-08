@@ -75,6 +75,24 @@ classes improved sharply (happy 0.52→0.72, sad 0.35→0.61). Remaining confusi
 > result, not silently swapped into production. Generalizing it needs diverse +
 > Korean training data (AIHub/KEMDy) — the documented next step.
 
+## English vs Korean — the full Test B picture
+
+| | Zero-shot (deployed, no training) | Trained classifier |
+|---|---|---|
+| **English** (RAVDESS, acted) | 55.0% (4-class) | **79.8%** (4-cls) / 74.2% (8-cls) |
+| **Korean** (AIHub, conversational) | **17.5%** (7-class, ≈ chance 14.3%) | **43.6%** (7-class) |
+
+Two honest, useful findings:
+1. **Off-the-shelf English models barely work on Korean conversational speech**
+   (17.5% ≈ chance) — concrete proof of the documented "models are English"
+   limitation. (They mostly collapse Korean clips into a couple of categories.)
+2. **Training adds ~25 points in BOTH languages** (EN +25, KO +26), so the
+   feature-based learning approach transfers. Full fine-tuning on Korean is the
+   ceiling beyond this.
+
+`korean_zeroshot_*` in this folder; reproduce with
+`scripts/eval_korean_zeroshot.py`.
+
 ## Korean evaluation (the audience language)
 
 Same recipe, on **AIHub 감정 분류를 위한 대화 음성 데이터셋** (`scripts/eval_korean.py`):
