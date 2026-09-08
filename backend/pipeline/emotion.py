@@ -155,6 +155,9 @@ class EmotionResult:
     arousal: float  # [-1, +1] (calibrated)
     dominance: Optional[float]  # [-1, +1] when dimensional model was used
     model_label: str = "neu"  # raw categorical short code, for reference
+    # Set only when confidence was low enough to ask the viewer about it. The
+    # id references features held server-side; the vector itself never leaves.
+    feedback_id: Optional[str] = None
 
     def to_dict(self) -> dict:
         return asdict(self)
@@ -270,18 +273,62 @@ def classify_emotion(
     text: Optional[str] = None,
     language: Optional[str] = None,
     use_dimensional: bool = True,
+    feedback_context: Optional[dict] = None,
 ) -> EmotionResult:
     model_label, confidence = classify_categorical(wav_path)
+
+    # Trained classifier (embedding + prosody → SVM), per language: far
+    # stronger than the zero-shot head — English 79.8% speaker-independent,
+    # Korean 49.6% via the XLSR-korean embedding, vs 55% / 17.5% zero-shot.
+    # It supplies the *category*; the dimensional head still supplies V/A/D,
+    # so the visual mapping is unchanged. Returns None when unavailable, in
+    # which case we keep the zero-shot label.
+    trained_category: Optional[str] = None
+    feedback_id: Optional[str] = None
+    from backend.pipeline.trained_classifier import classify_trained
+
+    trained = classify_trained(wav_path, language)
+    if trained is not None:
+        trained_category = trained.category
+        confidence = trained.confidence
+        model_label = trained.raw_label
+
+        # Uncertain segment → keep its feature vector so the viewer's answer
+        # can become training data later. Registered here because this is the
+        # only place the vector exists; only the id travels onward.
+        from backend.pipeline import feedback as fb
+
+        if fb.should_ask(confidence):
+            feedback_id = fb.register_pending(
+                trained.features,
+                predicted=trained.raw_label,
+                confidence=confidence,
+                language=language,
+                embedding_model=trained.embedding_model,
+                context=feedback_context,
+            )
+
     if use_dimensional:
         valence, arousal, dominance = classify_dimensional(wav_path)
         # Text tie-breaker (only nudges when the acoustic valence is uncertain,
         # and only for languages the text model handles reliably).
         valence = fuse_valence(valence, text, language)
-        category = derive_category(model_label, valence, arousal, dominance)
+        # Trust the trained category when we have one; otherwise fall back to
+        # the V/A-driven hybrid that compensates for the weak zero-shot head.
+        category = (
+            trained_category
+            if trained_category is not None
+            else derive_category(model_label, valence, arousal, dominance)
+        )
     else:
-        valence, arousal = CATEGORY_TO_VA[model_label]
+        if trained_category is not None:
+            category = trained_category
+            valence, arousal = CATEGORY_TO_VA.get(model_label, (0.0, 0.0))
+        else:
+            valence, arousal = CATEGORY_TO_VA[model_label]
+            category = SHORT_TO_LONG.get(model_label, "neutral")
         dominance = None
-        category = SHORT_TO_LONG.get(model_label, "neutral")
+
     return EmotionResult(
         category=category,
         category_confidence=confidence,
@@ -289,6 +336,7 @@ def classify_emotion(
         arousal=arousal,
         dominance=dominance,
         model_label=model_label,
+        feedback_id=feedback_id,
     )
 
 

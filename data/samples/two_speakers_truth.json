@@ -1,0 +1,32 @@
+[
+ {
+  "speaker": "01",
+  "start": 0.0,
+  "end": 3.3
+ },
+ {
+  "speaker": "02",
+  "start": 3.8,
+  "end": 7.41
+ },
+ {
+  "speaker": "01",
+  "start": 7.91,
+  "end": 11.41
+ },
+ {
+  "speaker": "02",
+  "start": 11.91,
+  "end": 15.91
+ },
+ {
+  "speaker": "01",
+  "start": 16.41,
+  "end": 20.12
+ },
+ {
+  "speaker": "02",
+  "start": 20.62,
+  "end": 24.72
+ }
+]

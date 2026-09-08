@@ -83,6 +83,104 @@ def health() -> dict:
     return {"status": "ok", "version": app.version}
 
 
+# ── Low-confidence feedback loop ─────────────────────────────────────
+# When the classifier is unsure, the analysis step stashes that segment's
+# feature vector server-side and returns an opaque id on the segment. The
+# client shows a short prompt and posts the viewer's answer back here, where
+# it is joined to those features and becomes in-domain training data.
+# The feature vector itself is never sent to, or accepted from, a client.
+
+
+@app.get("/feedback/config")
+def feedback_config() -> dict:
+    """Prompt settings for the web app and extension (single source of truth)."""
+    from backend.pipeline import feedback
+
+    return feedback.client_config()
+
+
+@app.post("/feedback")
+async def submit_feedback(
+    feedback_id: str = Form(...),
+    label: str = Form(...),
+    response_ms: Optional[int] = Form(default=None),
+) -> JSONResponse:
+    """Record how a viewer said an uncertain moment felt."""
+    from backend.pipeline import feedback
+
+    ok = feedback.record_label(feedback_id, label, response_ms)
+    if not ok:
+        # Unknown id — usually an expired/pruned record, not a client bug.
+        raise HTTPException(status_code=404, detail="unknown feedback_id")
+    return JSONResponse({"status": "ok"})
+
+
+@app.get("/feedback/stats")
+def feedback_stats() -> dict:
+    """Collection progress + whether there is enough to retrain."""
+    from backend.pipeline import feedback
+
+    return feedback.stats()
+
+
+# ── Personal calibration ─────────────────────────────────────────────
+#
+# Measures how well one viewer reads each visual channel, then reweights the
+# channels that have a dynamic range. See backend/pipeline/calibration.py.
+
+
+@app.get("/calibration/config")
+def calibration_config() -> dict:
+    """Trial structure and wording, so the client never hardcodes them."""
+    from backend.pipeline import calibration
+
+    return calibration.client_config()
+
+
+@app.post("/calibration/session")
+async def submit_calibration(
+    trials: str = Form(...),
+    mode: str = Form(default="short"),
+    participant_group: Optional[str] = Form(default=None),
+    crossover: Optional[str] = Form(default=None),
+    note: Optional[str] = Form(default=None),
+    store: bool = Form(default=True),
+) -> JSONResponse:
+    """Score a completed run and return the weights it produced.
+
+    `trials` and `crossover` arrive as JSON strings rather than a JSON body so
+    the whole API stays form-encoded, matching /process and /feedback.
+    """
+    from backend.pipeline import calibration
+
+    try:
+        parsed = json.loads(trials)
+        parsed_crossover = json.loads(crossover) if crossover else None
+    except json.JSONDecodeError as e:
+        raise HTTPException(status_code=400, detail=f"bad JSON: {e}") from e
+    if not isinstance(parsed, list) or not parsed:
+        raise HTTPException(status_code=400, detail="trials must be a non-empty list")
+
+    return JSONResponse(
+        calibration.record_session(
+            parsed,
+            mode=mode,
+            participant_group=participant_group,
+            crossover=parsed_crossover,
+            note=note,
+            store=store,
+        )
+    )
+
+
+@app.get("/calibration/stats")
+def calibration_stats() -> dict:
+    """Aggregate across participants — the research output of the feature."""
+    from backend.pipeline import calibration
+
+    return calibration.stats()
+
+
 @app.post("/process")
 async def process(
     file: UploadFile = File(...),

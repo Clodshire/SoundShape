@@ -1,0 +1,198 @@
+<!doctype html><meta charset="utf-8"><title>SoundShape 프로그램 소개서</title>
+<style>
+  :root{ --ink:#1c1c1f; --dark:#2b2b30; --line:#c9c9cf; --soft:#f0f0f2; }
+  *{margin:0;padding:0;box-sizing:border-box}
+  body{background:#fff;font-family:"Apple SD Gothic Neo","Malgun Gothic",sans-serif;
+       color:var(--ink);-webkit-font-smoothing:antialiased}
+  .page{width:794px;height:1122px;padding:48px 54px;background:#fff;position:relative;
+        display:flex;flex-direction:column}
+  .brand{font-size:38px;font-weight:800;color:var(--ink);letter-spacing:-.5px}
+  .meta{position:absolute;right:54px;top:54px;text-align:right;font-size:11px;line-height:1.7}
+  .tag{margin-top:11px;font-size:17px;font-weight:700}
+  .sub{margin-top:5px;font-size:12px}
+  .rule{height:3px;background:var(--ink);margin:15px 0 18px}
+  .lead{background:var(--soft);border-left:5px solid var(--ink);padding:19px 22px;
+        font-size:13px;line-height:1.85}
+  p.body{font-size:12.5px;line-height:1.9;margin-top:18px}
+  .shots{display:flex;gap:16px;margin-top:20px;align-items:flex-start}
+  .shot{flex:1}
+  .shot img{width:100%;display:block;border-radius:4px;border:1px solid var(--line)}
+  .cap{margin-top:9px;font-size:10.5px;line-height:1.65}
+  h2{font-size:17px;margin:26px 0 14px;padding-left:11px;border-left:4px solid var(--ink);line-height:1.2}
+  .grid{display:grid;grid-template-columns:1fr 1fr 1fr;gap:11px}
+  .card{border:1px solid var(--line);border-radius:3px;padding:14px 15px}
+  .card h3{font-size:12.5px;margin-bottom:7px;line-height:1.3}
+  .card p{font-size:11px;line-height:1.72}
+  .wide{grid-column:1/-1}
+  .wide p{font-size:11.5px;line-height:1.78}
+  .band{margin-top:auto;background:var(--dark);color:#fff;border-radius:4px;padding:17px 21px;
+        font-size:11.5px;line-height:1.75}
+  .stats{display:flex;gap:13px;margin-top:18px}
+  .stat{flex:1;background:var(--dark);border-radius:4px;padding:18px 13px;text-align:center;color:#fff}
+  .stat .t{font-size:10.5px}
+  .stat .v{margin:9px 0 7px;font-size:19px;font-weight:800}
+  .stat .v u{text-decoration:none;font-size:29px}
+  .stat .n{font-size:9.5px;line-height:1.6}
+  .steps{display:grid;grid-template-columns:repeat(4,1fr);gap:14px;margin-top:6px}
+  .step .num{width:21px;height:21px;border-radius:50%;background:var(--ink);color:#fff;
+             font-size:11px;font-weight:700;display:flex;align-items:center;justify-content:center}
+  .step h4{font-size:12px;margin:9px 0 6px}
+  .step p{font-size:10.5px;line-height:1.72}
+  .ask{border:1.5px solid var(--ink);border-radius:4px;padding:20px 23px;margin-top:6px}
+  .ask h4{font-size:13px;margin-bottom:8px}
+  .ask p{font-size:11.5px;line-height:1.85}
+  .ask .divider{border-top:1px solid var(--line);margin:13px 0 11px}
+  .ask .small{font-size:10.5px;line-height:1.8}
+  table{width:100%;border-collapse:collapse;margin-top:20px;font-size:11.5px}
+  th,td{border-bottom:1px solid var(--line);padding:11px 13px;text-align:left;vertical-align:top}
+  th{background:var(--soft);width:104px;font-weight:700}
+</style>
+
+<div class="page">
+  <div class="meta">2026년 9월<br>개발 유재후</div>
+  <div class="brand">SoundShape.</div>
+  <div class="tag">목소리에 담긴 감정을 눈과 손으로 전달합니다.</div>
+  <div class="sub">청각장애인을 위한 감정 전달형 자막 보조 시스템 프로그램 소개서입니다.</div>
+  <div class="rule"></div>
+
+  <div class="lead">
+    자막은 무엇을 말했는가만 전달합니다. 같은 “괜찮아”라는 말도 위로일 수 있고 화일 수 있고
+    비꼼일 수 있으나, 자막은 이 셋을 모두 똑같은 글자로 보여줍니다. 그 결과 목소리에 담긴
+    감정은 자막에서 사라집니다.
+  </div>
+
+  <p class="body">
+    SoundShape는 목소리 자체를 분석하여 감정을 읽어내고, 이를 화면 위의 빛과 손목의 진동으로
+    자동 변환합니다. 사람이 일일이 입력하지 않아도 어떤 영상에나 그대로 적용됩니다.
+  </p>
+
+  <div class="shots">
+    <div class="shot">
+      <img src="images/app_view.png" alt="실제 화면">
+      <div class="cap">위 화면은 실제 작동 모습이며, 자막 위쪽에 감정이 함께 표시됩니다.
+        자막 글자 자체는 변형하지 않습니다.</div>
+    </div>
+    <div class="shot">
+      <img src="images/emotions_grid.png" alt="감정별 표현">
+      <div class="cap">감정에 따라 모양과 색, 크기와 움직임이 함께 달라집니다.
+        위에서부터 분노, 공포, 기쁨, 슬픔, 놀람, 중립입니다.</div>
+    </div>
+  </div>
+
+  <h2>주요 기능</h2>
+  <div class="grid">
+    <div class="card">
+      <h3>감정 시각화</h3>
+      <p>화가 난 목소리는 붉고 각지게, 슬픈 목소리는 푸르고 느리게 표현합니다.
+         모양과 색, 크기와 움직임으로 감정을 한눈에 보여줍니다.</p>
+    </div>
+    <div class="card">
+      <h3>손목 진동 전달</h3>
+      <p>목소리의 크기와 빠르기, 떨림을 손목의 진동으로 전달합니다.
+         화면을 보지 않는 동안에도 말투를 느낄 수 있습니다.</p>
+    </div>
+    <div class="card">
+      <h3>배경음악 분리</h3>
+      <p>음악이 깔린 장면에서도 사람의 목소리만 골라내어 분석합니다.
+         그 덕분에 감정을 더 정확하게 읽어냅니다.</p>
+    </div>
+    <div class="card">
+      <h3>화자 구분</h3>
+      <p>말하는 사람이 바뀌면 자막 앞에 표시가 붙습니다.
+         누가 한 말인지 헷갈리지 않게 됩니다.</p>
+    </div>
+    <div class="card">
+      <h3>측정값 기반 표현</h3>
+      <p>높낮이와 크기, 빠르기는 인공지능의 추측이 아닙니다.
+         실제로 측정한 값을 그대로 화면에 옮깁니다.</p>
+    </div>
+    <div class="card">
+      <h3>사용자 응답 기반 개선</h3>
+      <p>판단이 애매한 구간에서만 방금 어떤 느낌이었는지를 짧게 묻습니다.
+         그 답을 모아 정확도를 계속 높여 갑니다.</p>
+    </div>
+    <div class="card wide">
+      <h3>개인별 표현 조정</h3>
+      <p>사람마다 색을 잘 읽는 분이 있고 움직임을 잘 읽는 분이 있습니다. 약 5분이 걸리는 짧은 검사를 통해
+         어떤 표현이 잘 보이는지를 확인한 뒤, 그 사람에게 잘 보이는 표현을 더 뚜렷하게 조정합니다.
+         잘 보이지 않는 표현도 완전히 끄지 않고 남겨 두어, 한 가지를 놓치더라도 다른 표현이 대신
+         전달되도록 하였습니다.</p>
+    </div>
+  </div>
+
+  <div class="band">
+    이용 방법은 다음과 같습니다. 홈페이지에 영상 파일이나 유튜브 주소를 입력하면 바로 확인할 수 있습니다.
+    크롬 확장 프로그램을 설치하시면 유튜브를 보시는 그대로 화면 위에 표시됩니다.
+  </div>
+</div>
+
+<div class="page">
+  <h2 style="margin-top:0">효과 검증 결과</h2>
+  <p class="body" style="margin-top:0">
+    소리를 완전히 끈 상태에서 짧은 영상 여덟 편을 보여주고 등장인물의 감정을 맞히게 하였습니다.
+    자막만 보았을 때와 자막과 SoundShape를 함께 보았을 때를 비교한 결과는 다음과 같습니다.
+  </p>
+
+  <div class="stats">
+    <div class="stat">
+      <div class="t">감정을 맞힌 비율</div>
+      <div class="v">27% → <u>73%</u></div>
+      <div class="n">자막만 보았을 때에서<br>함께 보았을 때로 변화하였습니다.</div>
+    </div>
+    <div class="stat">
+      <div class="t">비꼼과 억눌린 감정</div>
+      <div class="v">0% → <u>67%</u></div>
+      <div class="n">자막만으로는 아무도<br>읽어내지 못하던 표현입니다.</div>
+    </div>
+    <div class="stat">
+      <div class="t">소리를 듣는 사람의 수준</div>
+      <div class="v"><u>약 66%</u></div>
+      <div class="n">73%는 이 수준에<br>근접한 수치입니다.</div>
+    </div>
+  </div>
+
+  <p class="body">
+    특히 비꼼처럼 말과 속뜻이 반대인 장면에서 효과가 크게 나타났습니다. 글자만으로는 아무도 알 수 없던
+    표현을 다수의 참가자가 정확히 읽어냈습니다. 이 밖에 프로그램이 도중에 멈추지 않는지를 검사하는
+    112개 항목도 모두 통과하였습니다. 다만 이번 참가자는 여섯 명이었으며 모두 소리를 끄고 본 청인이었습니다.
+    그러한 이유로 당사자분들의 확인이 반드시 필요합니다.
+  </p>
+
+  <h2>처리 절차</h2>
+  <div class="steps">
+    <div class="step"><div class="num">1</div><h4>음성 분리</h4>
+      <p>배경음악과 소음을 걷어내고 사람의 목소리만 남깁니다.</p></div>
+    <div class="step"><div class="num">2</div><h4>자막 생성</h4>
+      <p>말한 내용을 글자로 옮기고 말하는 사람이 바뀌는 지점을 찾습니다.</p></div>
+    <div class="step"><div class="num">3</div><h4>운율 측정</h4>
+      <p>목소리의 높낮이와 크기, 떨림과 빠르기를 숫자로 재어 감정을 판단합니다.</p></div>
+    <div class="step"><div class="num">4</div><h4>시각 및 촉각 출력</h4>
+      <p>화면 위에 감정을 표현하고 같은 정보를 손목 진동으로 전달합니다.</p></div>
+  </div>
+  <p class="cap" style="margin-top:11px">
+    감정을 무엇으로 보여줄 것인지는 임의로 정하지 않았습니다. 화는 왜 빨간색인가라는 물음까지
+    선행 연구 결과에 근거하여 정하였습니다.
+  </p>
+
+  <h2>요청사항</h2>
+  <div class="ask">
+    <h4>이 소개서에 대한 의견을 주시면 감사하겠습니다.</h4>
+    <p>현장에서 어떤 기능이 더 있으면 좋을지, 지금의 방향에서 빠진 것은 없는지 알려주시면
+       개발에 반영하겠습니다. 특히 당사자분들이 실제로 보실 때 어떤 표현이 잘 읽히고
+       어떤 표현이 어려운지가 가장 궁금합니다.</p>
+    <div class="divider"></div>
+    <p class="small">
+      한글자막 CG 영화도 직접 관람하여 현재의 자막이 어디까지 전달하고 있는지를 확인하겠습니다.
+      개발 비용은 자체적으로 충당하고 있으며, 협회에 금전적 지원을 요청드리는 것이 아님을
+      함께 말씀드립니다.
+    </p>
+  </div>
+
+  <table>
+    <tr><th>프로그램</th><td>목소리의 감정을 시각과 촉각으로 전달하는 자막 보조 시스템입니다.</td></tr>
+    <tr><th>이용 형태</th><td>웹사이트에 영상 파일이나 유튜브 주소를 입력하여 이용하며, 크롬 확장 프로그램을 설치하면 유튜브에서 실시간으로 이용할 수 있습니다.</td></tr>
+    <tr><th>현재 상태</th><td>작동하는 시제품이 완성되었으며, 손목 진동 밴드는 제작 중입니다.</td></tr>
+    <tr><th>연락처</th><td>유재후, jay.yoo5bird@gmail.com</td></tr>
+    <tr><th>시연 영상</th><td>요청해 주시면 바로 보내드리겠습니다.</td></tr>
+  </table>
+</div>

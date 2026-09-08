@@ -63,7 +63,17 @@ CLASSES = ["ang", "hap", "neu", "sad"]
 
 
 def main() -> int:
+    import argparse
+    ap = argparse.ArgumentParser()
+    ap.add_argument("--actors", nargs="*", default=None,
+                     help="Restrict to these actor IDs (e.g. --actors 01 02). "
+                          "Default: every actor found under data/datasets/RAVDESS.")
+    args = ap.parse_args()
+
     clips = load_ravdess_clips(RAVDESS)
+    if args.actors:
+        wanted = {a.zfill(2) for a in args.actors}
+        clips = [c for c in clips if c.actor in wanted]
     if not clips:
         print(f"No RAVDESS clips under {RAVDESS}. Run scripts/download_ravdess.py")
         return 1
@@ -157,6 +167,12 @@ def main() -> int:
         "note": "RAVDESS, acoustic-only (text fusion not exercised — fixed neutral sentences).",
     }
     (OUT / "metrics.json").write_text(json.dumps(metrics, indent=2))
+
+    # Raw per-clip points, so figures can be re-styled later without rerunning
+    # the model (this is the slow part — real audio through the full pipeline).
+    (OUT / "va_points.json").write_text(json.dumps(
+        [{"emotion": r["true"], "valence": float(r["valence"]), "arousal": float(r["arousal"])}
+         for r in rows], ensure_ascii=False, indent=1))
     print(f"\nSaved → {OUT.relative_to(REPO)}/  (confusion_matrix.png, va_scatter.png, metrics.json)")
     return 0
 

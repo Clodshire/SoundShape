@@ -59,6 +59,62 @@ Each visual channel reads from this plane (and the discrete category):
 > version used `|arousal|`, which wrongly made *very calm* states as large
 > and saturated as excited ones — fixed in v1.1.)
 
+### Hybrid rendering — where inference stops and measurement starts (v1.3)
+
+The table above routes every channel through the classifier, so a single
+misclassification takes the whole glyph with it. But not every channel needs
+inference. Our own numbers say acoustics predict **arousal** well (r = 0.73)
+and **valence** poorly (r = 0.42) — the standard asymmetry in vocal-emotion
+research (Juslin & Laukka, 2003; Banse & Scherer, 1996). So the boundary is
+drawn where the evidence puts it, not where it is convenient:
+
+| Channel | Source in hybrid mode | Can be wrong? |
+|---|---|---|
+| Shape | classifier — category | yes |
+| Color hue | classifier — category | yes |
+| Color lightness | classifier — valence | yes |
+| **Size** | **measured arousal** | no |
+| **Color saturation** | **measured arousal** | no |
+| **Motion amplitude** | **measured jitter + shimmer** | no |
+| **Motion speed** | **measured speech rate** | no |
+
+The honest form of the claim is therefore *not* "only colour can be wrong".
+It is: **when the classifier is wrong, the shape and colour are wrong, but the
+size, saturation and motion still report the voice truthfully, because they
+never pass through the classifier.**
+
+**Measured arousal** blends four acoustic features. The weights were fitted,
+not chosen: all 480 RAVDESS clips carry a normal/strong emotional-intensity
+label in the filename, so each candidate could be scored on how well it
+separates the two (ROC-AUC).
+
+| Feature | AUC alone | Weight |
+|---|---|---|
+| F0 mean | .785 | 0.40 |
+| Intensity | .727 | 0.25 |
+| F0 range | .678 | 0.20 |
+| Speech rate | .600 | 0.15 |
+| *Jitter* | *.472* | *excluded* |
+| *Shimmer* | *.459* | *excluded* |
+
+Jitter and shimmer score at chance against emotional intensity, so they carry
+no arousal signal and stay out of the blend. They keep their original job —
+tremor — driving motion amplitude, which is a different question.
+
+**Why the baseline matters.** PRAAT reports intensity in dB against the
+recording's own level, so absolute loudness describes the mastering as much as
+the voice: across RAVDESS actors the per-actor gain spread is **14.3 dB**,
+larger than the **11.7 dB** difference between normal and strong delivery.
+Pitch has the same problem in another form — 220 Hz is agitated for one speaker
+and ordinary for another. Each segment is therefore scored against a running
+median of the same video (`backend/mapping/reference.py`), which is also how a
+listener hears it: loud *compared with how this person has been speaking*.
+
+Low confidence is handled differently here too. In full-AI mode an unsure
+classifier shrinks and calms the glyph as well as muting it. In hybrid mode
+**only the colour is muted** — size and motion are measurements, and dimming a
+measurement to express doubt about a label would misreport the voice.
+
 ---
 
 ## Channel 1 — Shape
@@ -273,8 +329,10 @@ can never disagree — A/B experiments are a one-file change.
   modulate amygdala activation. *Neuropsychologia, 45*(10), 2191–2200.
 - **Barrett, L. F. (2017).** The theory of constructed emotion. *Social
   Cognitive and Affective Neuroscience, 12*(1), 1–23.
+
 - **Gussenhoven, C. (2002).** Intonation and interpretation: phonetics and
   phonology. *Speech Prosody 2002.*
+
 - **Hupka, R. B., Zaleski, Z., Otto, J., Reidl, L., & Tarabrina, N. V.
   (1997).** The colors of anger, envy, fear, and jealousy: A cross-cultural
   study. *Journal of Cross-Cultural Psychology, 28*(2), 156–171.
@@ -302,6 +360,7 @@ can never disagree — A/B experiments are a one-file change.
   Personality and Social Psychology, 39*(6), 1161–1178.
 - **Sapir, E. (1929).** A study in phonetic symbolism. *Journal of
   Experimental Psychology, 12*(3), 225–239.
+
 - **Spence, C. (2011).** Crossmodal correspondences: A tutorial review.
   *Attention, Perception, & Psychophysics, 73*(4), 971–995.
 - **Valdez, P., & Mehrabian, A. (1994).** Effects of color on emotions.

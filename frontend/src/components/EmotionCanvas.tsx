@@ -28,6 +28,11 @@ export function EmotionCanvas({ visual, changedAt, transparent = false }: Props)
     const field = createEmotionField(canvas, { transparent });
     field.setVisual(visual);
     fieldRef.current = field;
+    // Hang the handle off the DOM node so the report-figure capture script
+    // (frontend/scripts/capture_figures.js, run from the browser console) can
+    // reach field.capture(). Reading the canvas from outside the render loop
+    // returns an empty buffer, so there is no way to do this from the DOM alone.
+    (canvas as HTMLCanvasElement & { __ssField?: EmotionFieldHandle }).__ssField = field;
     return () => {
       field.destroy();
       fieldRef.current = null;

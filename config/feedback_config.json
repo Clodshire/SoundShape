@@ -1,0 +1,50 @@
+{
+  "_doc": "Low-confidence feedback loop. When the classifier is unsure the visual is already muted (see confidence.conf_min in mapping_config.json); this asks the viewer what the moment felt like at exactly those points, and the answers are later used to retrain on in-domain data. Served to clients via GET /feedback/config so there is one source of truth.",
+  "enabled": true,
+  "trigger_below": 0.45,
+  "_trigger_doc": "Ask only when category confidence is below this. Deliberately the same value as mapping_config confidence.conf_min, so we ask exactly when we are already visually signalling uncertainty.",
+  "display_seconds": 8,
+  "min_interval_seconds": 120,
+  "max_prompts_per_video": 5,
+  "_pacing_doc": "Never interrupt viewing: one prompt at a time, auto-dismissing, rate limited. A prompt the viewer resents is worse than no data.",
+  "min_response_ms": 800,
+  "_quality_doc": "Answers faster than this are treated as careless and dropped at retraining time.",
+  "question": "이 장면, 어떻게 느껴졌나요?",
+  "options": [
+    {
+      "value": "happiness",
+      "label": "기쁨"
+    },
+    {
+      "value": "sadness",
+      "label": "슬픔"
+    },
+    {
+      "value": "angry",
+      "label": "분노"
+    },
+    {
+      "value": "fear",
+      "label": "불안"
+    },
+    {
+      "value": "sarcasm",
+      "label": "비꼼"
+    },
+    {
+      "value": "neutral",
+      "label": "중립"
+    }
+  ],
+  "unsure_value": "unsure",
+  "unsure_label": "모르겠음",
+  "_question_doc": "Asks how the moment FELT, not what the 'true' emotion was — a Deaf viewer cannot hear the ground truth, but can judge from context and expression, and perceived emotion is what this product exists to convey.",
+  "holdout_labels": [
+    "sarcasm"
+  ],
+  "holdout_min_count": 30,
+  "_holdout_doc": "sarcasm is not a class in the AIHub label space. Collect it from the start, but keep it out of retraining until there are enough examples to add it as a new class responsibly.",
+  "max_pending": 5000,
+  "pending_ttl_days": 30,
+  "_retention_doc": "Unanswered records are pruned so the store cannot grow without bound. Audio is never stored — only the numeric feature vector, from which the voice cannot be reconstructed."
+}

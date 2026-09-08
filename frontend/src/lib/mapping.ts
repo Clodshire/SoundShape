@@ -66,16 +66,57 @@ interface MappingConfig {
     conf_max: number;
     floor: number;
   };
+  rendering?: { mode?: RenderMode };
+  measured_arousal?: {
+    components: {
+      key: string;
+      weight: number;
+      abs_min: number;
+      abs_max: number;
+      rel_span: number;
+    }[];
+  };
+  hybrid?: {
+    size: { base: number; gain: number; min: number; max: number };
+    saturation: { base: number; gain: number; min: number; max: number };
+    motion: {
+      amplitude: { base: number; gain: number; min: number; max: number };
+      speed: { base: number; gain: number; min: number; max: number };
+    };
+  };
 }
+
+export type RenderMode = "full_ai" | "hybrid";
+
+/** Per-viewer channel gains from the calibration test. */
+export type ChannelWeights = Partial<
+  Record<"saturation" | "lightness" | "size" | "motion", number>
+>;
 
 const config = rawConfig as unknown as MappingConfig;
 
-// The base visual comes from the emotion vector (wav2vec2). When measured
-// prosody (PRAAT features) is supplied, prosody_modulation nudges motion/size
-// from the interpretable acoustics — mirrors backend/mapping/engine.py exactly.
+/** The mode the config ships with — what a viewer sees before touching anything. */
+export const DEFAULT_RENDER_MODE: RenderMode =
+  config.rendering?.mode ?? "full_ai";
+
+// Two rendering modes, mirroring backend/mapping/engine.py exactly.
+//
+//   full_ai  the historical behaviour — the emotion vector sets every channel
+//            and prosody_modulation then nudges size/motion.
+//   hybrid   size, saturation and motion are re-sourced from the measurement
+//            itself; shape, hue and lightness stay with the classifier because
+//            category and valence are the parts that genuinely need inference.
+//
+// `reference` is an optional per-video prosody baseline. With it, measured
+// arousal is scored as a deviation from that baseline rather than against an
+// absolute range — necessary because PRAAT intensity is relative to the
+// recording level, not to the voice.
 export function mapEmotionToVisual(
   emotion: Emotion,
   prosody?: Prosody | null,
+  reference?: Prosody | null,
+  mode?: RenderMode,
+  weights?: ChannelWeights | null,
 ): VisualSpec {
   let visual: VisualSpec = {
     shape: pickShape(emotion.category),
@@ -83,14 +124,82 @@ export function mapEmotionToVisual(
     size: pickSize(emotion.arousal),
     motion: pickMotion(emotion.category, emotion.valence, emotion.arousal),
   };
-  if (prosody) visual = applyProsody(visual, prosody);
-  if (emotion.confidence != null) visual = applyConfidence(visual, emotion.confidence);
+  const resolved = mode ?? config.rendering?.mode ?? "full_ai";
+  const hybrid = resolved === "hybrid" && !!prosody;
+
+  if (hybrid) visual = applyHybrid(visual, prosody as Prosody, reference);
+  else if (prosody) visual = applyProsody(visual, prosody);
+
+  if (emotion.confidence != null) {
+    visual = applyConfidence(visual, emotion.confidence, hybrid);
+  }
+  if (weights) visual = applyWeights(visual, weights);
   return visual;
+}
+
+// Move a value away from (gain > 1) or toward (gain < 1) a midpoint. Scaling
+// the DISTANCE is what makes a gain mean "how far apart do these levels sit" —
+// scaling the value itself would shift the average instead of the contrast,
+// and a viewer who cannot tell two levels apart still could not.
+function stretch(
+  value: number,
+  mid: number,
+  gain: number,
+  lo: number,
+  hi: number,
+): number {
+  return clamp(mid + (value - mid) * gain, lo, hi);
+}
+
+// Per-viewer channel gains. Only channels with a RANGE can be weighted: hue and
+// shape are categorical, so calibration compensates for them by widening the
+// others instead. Which emotion maps to which hue or shape never changes.
+function applyWeights(visual: VisualSpec, weights: ChannelWeights): VisualSpec {
+  const color = { ...visual.color };
+  const motion: MotionSpec = { ...visual.motion };
+  let size = visual.size;
+
+  const satW = weights.saturation ?? 1;
+  if (satW !== 1 && color.s > 0) {
+    const sc = config.color.saturation;
+    color.s = stretch(color.s, (sc.min + sc.max) / 2, satW, sc.min, sc.max);
+  }
+
+  const lightW = weights.lightness ?? 1;
+  if (lightW !== 1) {
+    const lc = config.color.lightness;
+    color.l = stretch(color.l, lc.base, lightW, lc.min, lc.max);
+  }
+
+  const sizeW = weights.size ?? 1;
+  if (sizeW !== 1) {
+    const sz = config.size;
+    size = stretch(size, (sz.min + sz.max) / 2, sizeW, sz.min, sz.max);
+  }
+
+  const motionW = weights.motion ?? 1;
+  if (motionW !== 1) {
+    // Motion has a natural floor at rest, so it scales from zero rather than
+    // from a midpoint — "more movement" is the whole scale.
+    motion.amplitude = clamp(motion.amplitude * motionW, 0, 1);
+    motion.speed = clamp(motion.speed * motionW, 0, 1.5);
+  }
+
+  return { shape: visual.shape, color, size, motion };
 }
 
 // When the classifier is unsure, express less: mute saturation, shrink size,
 // calm motion — instead of asserting a possibly-wrong emotion.
-function applyConfidence(visual: VisualSpec, confidence: number): VisualSpec {
+//
+// In hybrid mode this does NOTHING, deliberately. Size and motion are
+// measurements there, and saturation already means measured arousal — dimming
+// it for low confidence made a calm voice and an unsure classifier look the
+// same. Hybrid expresses doubt as reduced opacity in the renderer instead.
+function applyConfidence(
+  visual: VisualSpec,
+  confidence: number,
+  hybrid = false,
+): VisualSpec {
   const cc = config.confidence;
   if (!cc || !cc.enabled) return visual;
   const f = clamp(
@@ -98,10 +207,12 @@ function applyConfidence(visual: VisualSpec, confidence: number): VisualSpec {
     cc.floor,
     1,
   );
+  if (hybrid) return visual;
+  const color = { ...visual.color, s: visual.color.s * f };
   const sizeMin = config.size.min;
   return {
     shape: visual.shape,
-    color: { ...visual.color, s: visual.color.s * f },
+    color,
     size: sizeMin + (visual.size - sizeMin) * f,
     motion: { ...visual.motion, amplitude: visual.motion.amplitude * f },
   };
@@ -138,6 +249,104 @@ function applyProsody(visual: VisualSpec, prosody: Prosody): VisualSpec {
   const size = clamp(visual.size + loud * inten.size_gain, 0, 1);
 
   return { shape: visual.shape, color: visual.color, size, motion };
+}
+
+// Arousal read off the acoustics, in [0,1]. No classifier involved.
+//
+// With a `reference` each component is scored as a deviation from that
+// baseline (rel_span is the full-scale deviation); without one it is scored
+// against the absolute range. Weights and ranges were fitted on RAVDESS, not
+// guessed — see measured_arousal._doc in the config.
+function measuredArousal(prosody: Prosody, reference?: Prosody | null): number {
+  const ma = config.measured_arousal;
+  if (!ma) return 0;
+  const row = prosody as unknown as Record<string, number | undefined>;
+  const ref = (reference ?? undefined) as unknown as
+    | Record<string, number | undefined>
+    | undefined;
+  let total = 0;
+  let weight = 0;
+  for (const comp of ma.components) {
+    const value = row[comp.key];
+    if (value == null) continue;
+    const base = ref?.[comp.key];
+    const score =
+      base == null
+        ? norm(value, comp.abs_min, comp.abs_max)
+        : norm(value - base, -comp.rel_span, comp.rel_span);
+    total += score * comp.weight;
+    weight += comp.weight;
+  }
+  // Renormalise so a missing feature reweights the rest instead of dragging
+  // the result toward zero.
+  return weight ? total / weight : 0;
+}
+
+// Vocal instability (jitter + shimmer). Deliberately kept out of measured
+// arousal: on RAVDESS these two score .46 AUC against the normal/strong
+// intensity label, i.e. they carry no arousal signal. What they do carry is
+// tremor, which is what motion amplitude shows.
+function instability(prosody: Prosody): number {
+  const inst = config.prosody_modulation!.instability;
+  const jit = norm(prosody.jitter_local ?? 0, inst.jitter_min, inst.jitter_max);
+  const shi = norm(
+    prosody.shimmer_local ?? 0,
+    inst.shimmer_min,
+    inst.shimmer_max,
+  );
+  return (jit + shi) / 2;
+}
+
+// Re-source size, saturation and motion from the measurement itself. Shape,
+// hue, lightness and motion.type are left exactly as the classifier set them,
+// so everything written here stays truthful even when the label is wrong.
+function applyHybrid(
+  visual: VisualSpec,
+  prosody: Prosody,
+  reference?: Prosody | null,
+): VisualSpec {
+  const hb = config.hybrid;
+  if (!hb) return visual;
+
+  const arousalM = measuredArousal(prosody, reference);
+
+  const size = clamp(
+    hb.size.base + arousalM * hb.size.gain,
+    hb.size.min,
+    hb.size.max,
+  );
+
+  // A neutral reading is rendered as grey (hue 0, saturation 0). Saturating it
+  // from measured arousal would paint it red, so neutral is left alone.
+  const color = { ...visual.color };
+  if (color.s > 0) {
+    color.s = clamp(
+      hb.saturation.base + arousalM * hb.saturation.gain,
+      hb.saturation.min,
+      hb.saturation.max,
+    );
+  }
+
+  const amp = hb.motion.amplitude;
+  const spd = hb.motion.speed;
+  const rate = config.prosody_modulation!.speech_rate;
+  const motion: MotionSpec = {
+    ...visual.motion,
+    amplitude: clamp(
+      amp.base + instability(prosody) * amp.gain,
+      amp.min,
+      amp.max,
+    ),
+    speed: clamp(
+      spd.base +
+        norm(prosody.speech_rate_approx ?? 0, rate.rate_min, rate.rate_max) *
+          spd.gain,
+      spd.min,
+      spd.max,
+    ),
+  };
+
+  return { shape: visual.shape, color, size, motion };
 }
 
 function pickShape(category: string): ShapeKind {
@@ -208,3 +417,4 @@ function pickMotion(
 function clamp(x: number, lo: number, hi: number): number {
   return Math.max(lo, Math.min(hi, x));
 }
+

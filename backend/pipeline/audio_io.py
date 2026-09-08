@@ -77,6 +77,53 @@ def normalize_to_wav(
     )
 
 
+# Separation needs the audio the way the model was trained: 44.1 kHz stereo.
+# That is the opposite of what the rest of the pipeline wants, so it has its own
+# extraction rather than being folded into normalize_to_wav — a 16 kHz mono file
+# has already discarded the stereo image and the top two octaves, and neither
+# comes back.
+SEPARATION_SAMPLE_RATE = 44_100
+
+
+def extract_for_separation(
+    input_path: str | Path,
+    out_dir: Optional[Path] = None,
+) -> NormalizationResult:
+    """Convert any media file to 44.1 kHz stereo PCM WAV, for source separation.
+
+    Mono sources are duplicated to two channels by ffmpeg, which is what the
+    model expects; separation still works, it simply has no stereo cue to use.
+    """
+    input_path = Path(input_path)
+    if not input_path.exists():
+        raise FileNotFoundError(f"No such file: {input_path}")
+
+    out_dir = out_dir or Path(tempfile.mkdtemp(prefix="soundshape_sep_"))
+    out_dir.mkdir(parents=True, exist_ok=True)
+    out_path = out_dir / f"{input_path.stem}__44k_stereo.wav"
+
+    cmd = [
+        "ffmpeg", "-y",
+        "-i", str(input_path),
+        "-vn",
+        "-ac", "2",
+        "-ar", str(SEPARATION_SAMPLE_RATE),
+        "-acodec", "pcm_s16le",
+        str(out_path),
+    ]
+    result = subprocess.run(cmd, capture_output=True, text=True)
+    if result.returncode != 0:
+        raise RuntimeError(
+            f"ffmpeg failed (exit {result.returncode}):\n{result.stderr}"
+        )
+
+    info = sf.info(str(out_path))
+    return NormalizationResult(
+        path=out_path,
+        duration=float(info.duration),
+        sample_rate=int(info.samplerate),
+    )
+
 def slice_to_temp_wav(
     wav_path: str | Path,
     start_sec: float,

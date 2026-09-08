@@ -43,6 +43,8 @@ from pathlib import Path
 from typing import Optional
 
 from backend.mapping.engine import map_emotion_to_visual
+from backend.mapping.reference import ProsodyReference
+from backend.pipeline import separation, speaker
 from backend.pipeline import audio_io, asr
 from backend.pipeline.emotion import classify_emotion
 from backend.pipeline.prosody import extract_prosody
@@ -84,7 +86,24 @@ def build_timeline(
         norm.sample_rate,
     )
 
+    # Source separation, if switched on. Everything downstream then reads the
+    # VOCALS track instead of the mixture, so prosody stops being measured
+    # through the score; the score itself becomes the border. `prepare` never
+    # raises — when it cannot help it hands back the file we already had.
+    prepared = separation.prepare(input_path, wav_path, out_dir=work_dir)
+    wav_path = prepared.wav_path
+    if prepared.separated:
+        logger.info(
+            "Separated: reading vocals (music energy ratio %.3f)",
+            prepared.music_energy_ratio,
+        )
+
     temp_slices: list[Path] = []
+    # One baseline per file; hybrid rendering scores each segment against it.
+    prosody_reference = ProsodyReference()
+    # Walks the segments in order, marking where the speaker changes. Compares
+    # each segment only with the one before it — see backend/pipeline/speaker.py.
+    turn_tracker = speaker.TurnTracker() if speaker.is_enabled() else None
     try:
         # 2. Whisper transcription with word timestamps.
         transcription = asr.transcribe(
@@ -110,9 +129,31 @@ def build_timeline(
             )
             temp_slices.append(slice_path)
 
+            # Read once and reuse: the turn check wants the same audio the
+            # prosody measurement is about to read off disk.
+            turn = None
+            if turn_tracker is not None:
+                try:
+                    import soundfile as sf
+
+                    samples, seg_sr = sf.read(
+                        str(slice_path), dtype="float32", always_2d=False
+                    )
+                    turn = turn_tracker.update(samples, seg_sr, duration)
+                except Exception:  # noqa: BLE001 — never break analysis
+                    logger.exception("speaker: turn check failed")
+
             prosody_result = extract_prosody(str(slice_path))
             emotion_result = classify_emotion(
-                str(slice_path), text=seg.text, language=transcription.language
+                str(slice_path),
+                text=seg.text,
+                language=transcription.language,
+                feedback_context={
+                    "source": Path(wav_path).name,
+                    "t": round(seg.start, 2),
+                    "duration": round(seg.end - seg.start, 2),
+                    "text": seg.text,
+                },
             )
 
             emotion_payload = {
@@ -123,7 +164,13 @@ def build_timeline(
                 "arousal": emotion_result.arousal,
                 "dominance": emotion_result.dominance,
             }
+            if emotion_result.feedback_id:
+                emotion_payload["feedback_id"] = emotion_result.feedback_id
             prosody_payload = prosody_result.features.to_dict()
+            # Baseline read BEFORE this segment joins it — see
+            # ProsodyReference.snapshot(). Only hybrid rendering uses it.
+            baseline = prosody_reference.snapshot()
+            prosody_reference.update(prosody_payload)
 
             segments_out.append(
                 {
@@ -132,6 +179,15 @@ def build_timeline(
                     "text": seg.text,
                     "words": [w.to_dict() for w in seg.words],
                     "prosody": prosody_payload,
+                    # The baseline this segment was rendered against. Shipped
+                    # because the web app recomputes the visual client-side; if
+                    # it recomputed without the baseline the same video would
+                    # look different in the web app and the extension.
+                    "reference": baseline,
+                    # True when this line is spoken by someone other than the
+                    # previous one. The caption renders it as a leading dash,
+                    # the subtitle convention for a change of speaker.
+                    "speaker_changed": bool(turn and turn.changed),
                     "emotion": emotion_payload,
                     # Visual spec via the shared research-grounded engine. The
                     # base comes from the emotion vector; the MEASURED prosody
@@ -139,7 +195,9 @@ def build_timeline(
                     # interpretable PRAAT features drive the output. The web
                     # frontend recomputes this identically; emitting it here
                     # lets any other client render without re-implementing rules.
-                    "visual": map_emotion_to_visual(emotion_payload, prosody_payload),
+                    "visual": map_emotion_to_visual(
+                        emotion_payload, prosody_payload, baseline
+                    ),
                 }
             )
 
@@ -148,6 +206,8 @@ def build_timeline(
                 "duration": norm.duration,
                 "sample_rate": norm.sample_rate,
                 "language": transcription.language,
+                "separated": prepared.separated,
+                "music_present": prepared.music_present,
             },
             "segments": segments_out,
         }

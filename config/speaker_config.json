@@ -1,0 +1,13 @@
+{
+  "_doc": "Speaker-turn detection. Marks WHEN the speaker changes, not who is speaking — that is all the caption needs, since it renders the change as a leading dash, the convention broadcast and streaming subtitles already use for a change of speaker.",
+  "_why_change_not_identity": "Detecting a change only requires comparing a segment with the one before it. Tracking identity across a whole video requires clustering with an unknown number of speakers, which is far more fragile and fails in ways a viewer sees. Choosing the dash convention over name labels therefore removed most of the risk from this feature.",
+  "enabled": false,
+  "_enabled_doc": "Off, and staying off until the feature can be validated end to end. The comparison logic itself measures well (turn-change AUC 0.958; 92.9% on real utterance sequences), but the integration with Whisper segments could not be measured: RAVDESS has only two sentences, so any conversation built from it triggers repetition suppression and 40-44% of utterances never become segments at all. Validate on a real two-person clip with varied dialogue before turning this on.",
+  "model": "speechbrain/spkrec-ecapa-voxceleb",
+  "device": "cpu",
+  "_model_doc": "ECAPA-TDNN speaker embeddings, 192-d. Measured on RAVDESS (8 actors, 480 clips): 36 ms per clip on CPU, so this is a rounding error next to transcription. The features the pipeline already computes CANNOT do this job — the emotion embedding scores 0.102 ARI against actor labels because it was trained to be speaker-invariant on purpose; ECAPA scores 0.821.",
+  "change_distance": 0.7,
+  "_threshold_doc": "Cosine distance above which two neighbouring segments are called different speakers. Measured on 4000 random RAVDESS pairs (turn-change AUC 0.958):\n  0.60 → precision 95.3%, recall 99.1%\n  0.65 → precision 96.3%, recall 97.5%\n  0.70 → precision 97.3%, recall 94.0%\n  0.75 → precision 98.3%, recall 88.7%\nAccuracy peaks at 0.60, but accuracy is the wrong thing to maximise here. A dash that should not be there tells the viewer someone else spoke — it invents information. A missing dash only withholds it, which is the situation today. So the threshold is set for PRECISION, not the peak. 0.70 also leaves headroom because RAVDESS is clean studio audio and real dialogue is harder.",
+  "min_segment_seconds": 1.0,
+  "_min_doc": "Below this a segment gets no turn decision at all. Measured by truncating clips: turn-change AUC is 0.978 at 1.0 s but falls to 0.904 at 0.5 s. Whisper segments are usually several seconds, so this rarely binds — it exists to stop a stray half-second segment from producing a confident-looking mark."
+}

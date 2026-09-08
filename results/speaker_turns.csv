@@ -1,0 +1,46 @@
+conversation,t,true_speaker,expected_change,marked_change,distance,text
+0,0.98,08,0,0,,"Kids are talking, dogs are sitting by th"
+0,9.02,08,0,1,0.8047,Kids are talking by the door.
+0,13.51,08,0,0,0.6079,Dogs are sitting by the door.
+1,0.72,08,0,0,,Kids are talking by the door dogs are si
+1,13.69,08,0,0,0.5358,Dogs are sitting by the door
+2,0.75,02,0,0,,Kids are talking by the door dogs are si
+2,10.11,02,0,0,0.4519,Kids are talking by the door dogs are si
+3,0.72,05,0,0,,Kids are talking by the door dogs are si
+3,14.08,08,1,1,0.8205,Dogs are sitting by the door
+4,0.69,08,0,0,,Kids are talking by the door dogs are si
+4,13.14,08,0,1,0.7483,Dogs are sitting by the door
+5,0.69,01,0,0,,Kids are talking by the door dogs are si
+5,14.21,01,0,1,0.898,Dogs are sitting by the door
+6,0.75,08,0,0,,Kids are talking by the door dogs are si
+6,8.78,03,1,1,0.7288,Kids are talking by the door
+6,13.3,03,0,0,0.3817,Dogs are sitting by the door
+7,0.66,01,0,0,,Kids are talking by the door!
+7,5.37,07,1,1,0.8602,Dogs are sitting by the door.
+7,10.26,07,0,0,0.6573,Kids are talking by the door!
+7,14.37,07,0,1,0.8001,Dogs are sitting by the door.
+8,0.72,08,0,0,,Kids are talking by the door dogs are si
+8,13.62,08,0,0,0.6141,Dogs are sitting by the door
+9,0.66,01,0,0,,Kids are talking by the door dogs are si
+9,12.97,07,1,1,0.848,Dogs are sitting by the door
+10,0.59,04,0,0,,Kids are talking by the door dogs are si
+11,0.72,02,0,0,,Kids are talking by the door dogs are si
+11,13.49,02,0,0,0.4782,Dogs are sitting by the door
+12,0.62,07,0,0,,Kids are talking by the door dogs are si
+12,12.99,08,1,1,0.7922,Dogs are sitting by the door
+13,0.62,03,0,0,,Kids are talking by the door dogs are si
+13,11.08,03,0,0,0.2929,the door dogs are sitting by the door
+14,0.69,05,0,0,,Kids are talking by the door dogs are si
+14,7.04,03,1,1,0.9426,The kids are talking by the door
+14,13.48,05,1,1,0.8399,Dogs are sitting by the door
+15,0.72,06,0,0,,Kids are talking by the door.
+15,5.44,03,1,1,0.8288,Dogs are sitting by the door.
+15,10.07,03,0,0,0.4266,Kids are talking by the door.
+15,14.54,06,1,1,0.9303,Dogs are sitting by the door.
+16,0.69,05,0,0,,Kids are talking by the door dogs are si
+16,13.19,03,1,0,0.5492,Dogs are sitting by the door
+17,0.82,02,0,0,,Kids are talking by the door dogs are si
+17,13.48,02,0,0,0.4686,Dogs are sitting by the door
+18,0.82,08,0,0,,Kids are talking by the door dogs are si
+19,0.72,06,0,0,,Kids are talking by the door dogs are si
+19,13.2,08,1,0,0.6255,Dogs are sitting by the door

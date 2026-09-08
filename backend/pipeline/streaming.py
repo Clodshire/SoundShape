@@ -26,6 +26,8 @@ from pathlib import Path
 from typing import Iterator, Optional
 
 from backend.mapping.engine import map_emotion_to_visual
+from backend.mapping.reference import ProsodyReference
+from backend.pipeline import separation, speaker
 from backend.pipeline import asr, audio_io
 from backend.pipeline.chunker import find_chunk_boundaries
 from backend.pipeline.emotion import classify_emotion
@@ -66,6 +68,19 @@ def stream_timeline(
             "language": detected_lang or "",
         }
 
+        # Separation runs once, up front, for the same reason the baseline does:
+        # it describes the whole video, not a chunk. `prepare` never raises.
+        prepared = separation.prepare(input_path, wav_path, out_dir=work_dir)
+        wav_path = prepared.wav_path
+
+        # One baseline per stream; hybrid rendering scores each segment
+        # against it. Must live outside the chunk loop — the baseline is
+        # per video, not per chunk.
+        prosody_reference = ProsodyReference()
+        # Marks where the speaker changes; compares each segment only with the
+        # one before it, so it carries no state across the whole stream.
+        turn_tracker = speaker.TurnTracker() if speaker.is_enabled() else None
+
         for ci, (cs, ce) in enumerate(boundaries):
             chunk_path = audio_io.slice_to_temp_wav(wav_path, cs, ce)
             try:
@@ -88,10 +103,28 @@ def stream_timeline(
                 abs_end = cs + seg.end
 
                 seg_path = audio_io.slice_to_temp_wav(wav_path, abs_start, abs_end)
+                turn = None
+                if turn_tracker is not None:
+                    try:
+                        import soundfile as sf
+
+                        samples, seg_sr = sf.read(
+                            str(seg_path), dtype="float32", always_2d=False
+                        )
+                        turn = turn_tracker.update(samples, seg_sr, seg_dur)
+                    except Exception:  # noqa: BLE001
+                        logger.exception("speaker: turn check failed")
                 try:
                     prosody = extract_prosody(str(seg_path)).features.to_dict()
                     emo = classify_emotion(
-                        str(seg_path), text=seg.text, language=detected_lang
+                        str(seg_path),
+                        text=seg.text,
+                        language=detected_lang,
+                        feedback_context={
+                            "t": round(abs_start, 2),
+                            "duration": round(abs_end - abs_start, 2),
+                            "text": seg.text,
+                        },
                     )
                 finally:
                     audio_io.safe_unlink(seg_path)
@@ -104,6 +137,8 @@ def stream_timeline(
                     "arousal": emo.arousal,
                     "dominance": emo.dominance,
                 }
+                if emo.feedback_id:
+                    emotion_payload["feedback_id"] = emo.feedback_id
                 # Offset word timestamps to absolute time too.
                 words = [
                     {
@@ -114,6 +149,10 @@ def stream_timeline(
                     }
                     for w in seg.words
                 ]
+                # Baseline read BEFORE this segment joins it — same rule the
+                # batch path uses, so a video never renders two ways.
+                baseline = prosody_reference.snapshot()
+                prosody_reference.update(prosody)
                 yield {
                     "type": "segment",
                     "t": abs_start,
@@ -121,8 +160,15 @@ def stream_timeline(
                     "text": seg.text,
                     "words": words,
                     "prosody": prosody,
+                    # See timeline.py — the web app recomputes the visual, so
+                    # it needs the same baseline the backend used.
+                    "reference": baseline,
+                    # See timeline.py — rendered as a leading dash.
+                    "speaker_changed": bool(turn and turn.changed),
                     "emotion": emotion_payload,
-                    "visual": map_emotion_to_visual(emotion_payload, prosody),
+                    "visual": map_emotion_to_visual(
+                        emotion_payload, prosody, baseline
+                    ),
                 }
                 emitted += 1
 

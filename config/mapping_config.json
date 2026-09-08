@@ -1,5 +1,5 @@
 {
-  "version": "1.2.0",
+  "version": "1.5.0",
   "description": "SoundShape cross-modal mapping spec. Maps an emotion vector (category, valence, arousal) PLUS interpretable prosody features (jitter, shimmer, intensity, speech rate) to a visual specification (shape, color, size, motion). Each channel is grounded in published research; human-readable justification in docs/mapping_rationale.md. Single source of truth, consumed by backend/mapping/engine.py and frontend/src/lib/mapping.ts (synced via scripts/sync_mapping_config.py). NOTE: arousal is signed [-1,+1]; size and saturation map it MONOTONICALLY via (arousal+1)/2 so calm reads small/muted and excited reads large/vivid. The base visual is set by the emotion vector (from wav2vec2); prosody_modulation then nudges motion/size using the MEASURED PRAAT features so the explicit, interpretable acoustics drive the output too.",
   "shape": {
     "citation": "Angular forms are perceived as threatening, rounded forms as warm/safe: Aronoff et al. (1992); Larson, Aronoff & Stearns (2007). Neural basis: sharp-contoured objects preferentially engage the amygdala (threat): Bar & Neta (2006, 2007). Supported by the Bouba/Kiki sound-shape effect: Köhler (1929); Ramachandran & Hubbard (2001).",
@@ -28,9 +28,24 @@
       "sincerity": 80,
       "sarcasm": 200
     },
-    "neutral": { "h": 0, "s": 0, "l": 55 },
-    "saturation": { "base": 30, "arousal_gain": 60, "min": 25, "max": 95 },
-    "lightness": { "base": 50, "valence_gain": 12, "arousal_gain": 0, "min": 35, "max": 70 }
+    "neutral": {
+      "h": 0,
+      "s": 0,
+      "l": 55
+    },
+    "saturation": {
+      "base": 30,
+      "arousal_gain": 60,
+      "min": 25,
+      "max": 95
+    },
+    "lightness": {
+      "base": 50,
+      "valence_gain": 12,
+      "arousal_gain": 0,
+      "min": 35,
+      "max": 70
+    }
   },
   "size": {
     "citation": "Size scales monotonically with arousal — Russell (1980) activation axis; larger forms read as more intense. Linguistically reinforced by the Frequency Code (Ohala 1994): low pitch → large/dominant, high pitch → small; and sound-magnitude symbolism (Sapir 1929). Monotonic in signed arousal: calm → small, excited → large.",
@@ -43,37 +58,80 @@
     "citation": "Movement kinematics carry emotion: fast/jerky motion reads as anger/high-arousal, slow/smooth as sadness/low-arousal — Pollick et al. (2001). General temporal crossmodal mapping (fast sound ↔ fast motion) — Spence (2011). The vocal instability we mirror as visual instability (jitter/shimmer in high-arousal states) is from Banse & Scherer (1996).",
     "rules": [
       {
-        "when": { "arousal_gt": 0.4, "valence_lt": 0.0 },
-        "motion": { "type": "shake", "amplitude": 0.7, "speed": 0.9 },
+        "when": {
+          "arousal_gt": 0.4,
+          "valence_lt": 0.0
+        },
+        "motion": {
+          "type": "shake",
+          "amplitude": 0.7,
+          "speed": 0.9
+        },
         "why": "High arousal + negative valence (anger-like) → sharp, jittery agitation."
       },
       {
-        "when": { "category": "fear" },
-        "motion": { "type": "tremor", "amplitude": 0.5, "speed": 1.0 },
+        "when": {
+          "category": "fear"
+        },
+        "motion": {
+          "type": "tremor",
+          "amplitude": 0.5,
+          "speed": 1.0
+        },
         "why": "Fear → fast, fine trembling."
       },
       {
-        "when": { "arousal_gt": 0.4 },
-        "motion": { "type": "pulse", "amplitude": 0.55, "speed": 0.7 },
+        "when": {
+          "arousal_gt": 0.4
+        },
+        "motion": {
+          "type": "pulse",
+          "amplitude": 0.55,
+          "speed": 0.7
+        },
         "why": "High arousal + non-negative valence (joy/surprise) → energetic pulsing."
       },
       {
-        "when": { "category": "sadness", "arousal_lt": -0.2, "valence_lt": 0.0 },
-        "motion": { "type": "slow_drift", "amplitude": 0.35, "speed": 0.25 },
+        "when": {
+          "category": "sadness",
+          "arousal_lt": -0.2,
+          "valence_lt": 0.0
+        },
+        "motion": {
+          "type": "slow_drift",
+          "amplitude": 0.35,
+          "speed": 0.25
+        },
         "why": "Calm sadness → slow horizontal drifting, like a sigh."
       },
       {
-        "when": { "category": "resignation" },
-        "motion": { "type": "sink", "amplitude": 0.4, "speed": 0.25 },
+        "when": {
+          "category": "resignation"
+        },
+        "motion": {
+          "type": "sink",
+          "amplitude": 0.4,
+          "speed": 0.25
+        },
         "why": "Resignation → slow downward sink, an exhale."
       },
       {
-        "when": { "category": "sincerity" },
-        "motion": { "type": "pulse", "amplitude": 0.22, "speed": 0.4 },
+        "when": {
+          "category": "sincerity"
+        },
+        "motion": {
+          "type": "pulse",
+          "amplitude": 0.22,
+          "speed": 0.4
+        },
         "why": "Warm sincerity → soft, gentle pulse."
       }
     ],
-    "default": { "type": "still", "amplitude": 0.0, "speed": 0.0 }
+    "default": {
+      "type": "still",
+      "amplitude": 0.0,
+      "speed": 0.0
+    }
   },
   "prosody_modulation": {
     "citation": "Connects the MEASURED, interpretable PRAAT/Parselmouth features directly to the visual output (the explainable counterpart to wav2vec2's opaque embedding). INSTABILITY: vocal jitter + shimmer rise with agitation, fear, and stress (Banse & Scherer 1996; Juslin & Laukka 2003) → rendered as visual instability (motion amplitude). INTENSITY: loudness maps to perceptual salience / energy (Spence 2011) → brightness via size. SPEECH RATE: faster speech → faster motion (Spence 2011 temporal correspondence).",
@@ -107,5 +165,101 @@
     "conf_min": 0.45,
     "conf_max": 0.85,
     "floor": 0.4
+  },
+  "rendering": {
+    "citation": "Hybrid rendering: only the channels that genuinely require INFERENCE are driven by the classifier; the channels that can be MEASURED are read straight off the acoustics. Grounded in the asymmetry we measure ourselves — acoustics predict arousal well (r=0.73) but valence poorly (r=0.42) — which is the standard finding in vocal-emotion research (Juslin & Laukka 2003; Banse & Scherer 1996).",
+    "_doc": "mode='full_ai' reproduces the original behaviour byte for byte (emotion vector sets every channel, prosody_modulation then nudges). mode='hybrid' re-sources size / saturation / motion amplitude / motion speed from measured prosody, leaving shape, hue and lightness — the category- and valence-driven channels — with the classifier. Switchable so the two can be compared on identical clips.",
+    "mode": "hybrid",
+    "modes": [
+      "full_ai",
+      "hybrid"
+    ],
+    "ai_channels": [
+      "shape",
+      "color.h",
+      "color.l"
+    ],
+    "measured_channels": [
+      "size",
+      "color.s",
+      "motion.amplitude",
+      "motion.speed"
+    ],
+    "_claim": "If the classifier is wrong, shape / hue / lightness are wrong. Size, saturation and motion still report the voice truthfully, because they never pass through the classifier.",
+    "_default_doc": "Shipped default since the RAVDESS comparison (scripts/compare_rendering.py): the size channel separates strong from normal delivery at AUC .812 under hybrid vs .750 under full_ai (p<0.0001), and the gap widens to .833 vs .722 on the clips the classifier misreads (p=0.0048) — which is the case the split exists for. full_ai is kept switchable so the two can still be shown side by side."
+  },
+  "measured_arousal": {
+    "citation": "Acoustic correlates of arousal, in the order our own measurement ranks them: F0 level and range, then vocal intensity, then speech rate (Juslin & Laukka 2003 meta-analysis; Banse & Scherer 1996).",
+    "_doc": "Weights and ranges were FITTED, not guessed. On all 480 RAVDESS clips (which carry a normal/strong emotional-intensity label in the filename) we measured how well each candidate separates the two. Single features: f0_mean .785, intensity .727, f0_range .678, speech_rate .600 AUC — jitter and shimmer scored .46, i.e. they do NOT track arousal, so they stay out of this composite and keep driving motion amplitude instead. The weighted composite below reaches .812.",
+    "_relative_doc": "PRAAT intensity is measured in dB against the recording's own level, so it is a property of the MASTERING as much as of the voice: across RAVDESS actors the per-actor gain spread is 14.3 dB, larger than the 11.7 dB difference between normal and strong delivery. Absolute dB is therefore not trustworthy on its own. When the pipeline supplies a per-video reference every component is normalised as a deviation from it, which is also closer to how a listener hears loudness — relative to the speaker a moment ago. AUC .782 absolute → .812 with the reference.",
+    "components": [
+      {
+        "key": "f0_mean",
+        "weight": 0.4,
+        "abs_min": 90.0,
+        "abs_max": 380.0,
+        "rel_span": 60.0
+      },
+      {
+        "key": "intensity_mean",
+        "weight": 0.25,
+        "abs_min": 0.0,
+        "abs_max": 75.0,
+        "rel_span": 15.0
+      },
+      {
+        "key": "f0_range",
+        "weight": 0.2,
+        "abs_min": 60.0,
+        "abs_max": 450.0,
+        "rel_span": 120.0
+      },
+      {
+        "key": "speech_rate_approx",
+        "weight": 0.15,
+        "abs_min": 25.0,
+        "abs_max": 85.0,
+        "rel_span": 10.0
+      }
+    ],
+    "reference": {
+      "_doc": "Running-median baseline built by backend/mapping/reference.py. Below min_segments there is not enough history to form one, so the mapping falls back to the absolute ranges. Kept identical in the batch and streaming paths so the same video never renders two ways.",
+      "min_segments": 3
+    }
+  },
+  "hybrid": {
+    "_doc": "Channel formulas used only when rendering.mode == 'hybrid'. size and saturation follow measured arousal; motion amplitude follows measured vocal instability (jitter+shimmer); motion speed follows measured speech rate. motion.type stays with the classifier — it is categorical, like shape.",
+    "size": {
+      "base": 0.2,
+      "gain": 0.7,
+      "min": 0.2,
+      "max": 0.95
+    },
+    "saturation": {
+      "base": 30.0,
+      "gain": 60.0,
+      "min": 25.0,
+      "max": 95.0
+    },
+    "motion": {
+      "amplitude": {
+        "base": 0.15,
+        "gain": 0.75,
+        "min": 0.0,
+        "max": 1.0
+      },
+      "speed": {
+        "base": 0.15,
+        "gain": 0.85,
+        "min": 0.0,
+        "max": 1.5
+      }
+    },
+    "confidence": {
+      "_doc": "In hybrid mode low confidence must NOT shrink or calm the glyph: size and motion are measurements and carry no classification error. Only the colour — which does pass through the classifier — is muted.",
+      "attenuates": [
+        "color.s"
+      ]
+    }
   }
 }

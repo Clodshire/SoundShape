@@ -1,0 +1,213 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>SoundShape — Six Planned Improvements</title>
+<style>
+  @page { size: A4; margin: 18mm 16mm; }
+  * { box-sizing: border-box; }
+  body {
+    font-family: -apple-system, "Helvetica Neue", Arial, sans-serif;
+    font-size: 10.5pt; line-height: 1.55; color: #1a1a1a; margin: 0;
+  }
+  header { border-bottom: 2.5px solid #1a1a1a; padding-bottom: 10px; margin-bottom: 22px; }
+  h1 { font-size: 21pt; margin: 0 0 4px; letter-spacing: -0.4px; }
+  .sub { color: #666; font-size: 9.5pt; }
+  h2 {
+    font-size: 13pt; margin: 26px 0 8px; padding-top: 14px;
+    border-top: 1px solid #ddd; page-break-after: avoid;
+  }
+  h2 .n {
+    display: inline-block; width: 21px; height: 21px; line-height: 21px;
+    background: #1a1a1a; color: #fff; text-align: center; border-radius: 50%;
+    font-size: 10pt; margin-right: 7px; vertical-align: 1px;
+  }
+  h3 { font-size: 10pt; margin: 13px 0 4px; color: #444;
+       text-transform: uppercase; letter-spacing: 0.6px; page-break-after: avoid; }
+  p { margin: 5px 0; }
+  ul { margin: 5px 0 5px 18px; padding: 0; }
+  li { margin: 3px 0; }
+  .oneline {
+    background: #f4f4f6; border-left: 3px solid #1a1a1a;
+    padding: 8px 12px; margin: 8px 0; font-weight: 600;
+  }
+  .effect {
+    background: #f0f7f2; border-left: 3px solid #2e7d5b;
+    padding: 8px 12px; margin: 9px 0;
+  }
+  .warn {
+    background: #fdf4ee; border-left: 3px solid #c1663a;
+    padding: 8px 12px; margin: 9px 0;
+  }
+  table { width: 100%; border-collapse: collapse; margin: 10px 0; font-size: 9.5pt; }
+  th, td { border: 1px solid #d5d5d8; padding: 6px 9px; text-align: left; vertical-align: top; }
+  th { background: #f4f4f6; font-weight: 600; }
+  code, .mono {
+    font-family: "SF Mono", Menlo, monospace; font-size: 9pt;
+    background: #f4f4f6; padding: 1px 4px; border-radius: 3px;
+  }
+  pre {
+    background: #f4f4f6; padding: 10px 12px; border-radius: 4px;
+    font-family: "SF Mono", Menlo, monospace; font-size: 8.5pt;
+    line-height: 1.45; margin: 8px 0; white-space: pre;
+  }
+  .section-break { page-break-before: always; }
+  .sec-title {
+    font-size: 15pt; margin: 0 0 12px; padding-bottom: 6px;
+    border-bottom: 2px solid #1a1a1a;
+  }
+  .muted { color: #666; font-size: 9.5pt; }
+</style>
+</head>
+<body>
+
+<header>
+  <h1>SoundShape — Six Planned Improvements</h1>
+  <div class="sub">Emotion-visualizing captions for Deaf and hard-of-hearing viewers &middot; Team Macaroni</div>
+</header>
+
+<!-- 1 -->
+<h2><span class="n">1</span>Haptic Channel — Wristband</h2>
+<div class="oneline">Delivers the loudness of the voice as vibration on the wrist.</div>
+
+<h3>Why it is needed</h3>
+<p>Viewers currently have to watch three things at once: the actor's face, the caption text, and the emotion visualization. The visual channel is already saturated. Touch is the only channel that is still completely free — and it requires no eye contact at all.</p>
+
+<h3>How it works</h3>
+<ul>
+  <li>The browser measures loudness from the video audio in real time (Web Audio API)</li>
+  <li>Intensity values (0–127) are sent over Bluetooth to the wristband at 25 Hz</li>
+  <li>Band: ESP32 + DRV2605L haptic driver + LRA motor (approx. ₩30,000)</li>
+  <li>No phone app required — the browser talks to the band directly</li>
+</ul>
+
+<div class="effect"><strong>Effect.</strong> Users feel the rhythm, emphasis, and silences of speech without looking. Freeing the eyes leaves room to actually watch the acting.</div>
+
+<!-- 2 -->
+<h2><span class="n">2</span>Low-Confidence Learning Loop</h2>
+<div class="oneline">Ask the user only when the AI is uncertain, then learn from those answers.</div>
+
+<h3>Why it is needed</h3>
+<p>The main cause of the 49.6% Korean accuracy is <strong>domain mismatch</strong>. The model learned from AIHub conversational speech, but users watch dramas. Labeled emotion data for Korean drama does not exist anywhere — yet it is exactly what the user is watching right now.</p>
+
+<h3>How it works</h3>
+<ul>
+  <li>When confidence drops below threshold (already shown in gray) → a small prompt appears in the corner, auto-dismissing after 5 seconds</li>
+  <li>"How did this scene feel?" with 5–6 options plus "Not sure"</li>
+  <li>Rate-limited to once per 2 minutes so viewing is never disrupted</li>
+  <li><strong>Audio is never stored</strong> — only the numeric embedding, which protects privacy</li>
+  <li>Once labels accumulate, the SVM is retrained (no GPU needed, takes minutes)</li>
+</ul>
+
+<div class="effect"><strong>Effect.</strong> "How will you improve accuracy?" becomes <em>"We built a system that improves the more it is used."</em></div>
+
+<!-- 3 -->
+<h2><span class="n">3</span>Audio Source Separation — One Component, Two Wins</h2>
+<div class="oneline">Split voice from background music, then process each independently.</div>
+
+<h3>Why it is needed</h3>
+<ul>
+  <li>Loud background music destabilizes prosody analysis (a limitation we stated ourselves)</li>
+  <li>In film and drama, <strong>half the emotion is carried by the score</strong> — and Deaf viewers miss 100% of it</li>
+</ul>
+
+<h3>How it works</h3>
+<pre>audio ─ separate ─┬─ vocals → dialogue emotion → center of screen
+                  └─ music  → musical mood     → screen border</pre>
+<ul>
+  <li><strong>The two tracks are never merged</strong> — they stay independent</li>
+  <li>Music is processed in coarse 5–10 second windows (music changes slowly)</li>
+  <li>Videos without music skip separation entirely, preserving speed</li>
+</ul>
+
+<div class="effect"><strong>Effect.</strong> Accuracy holds up in noisy scenes, and the emotional information in the score finally reaches the viewer. When dialogue and music diverge — cheerful words over an ominous cue — that contrast is itself the director's intent, so it must be shown separately rather than averaged away.</div>
+
+<!-- 4 -->
+<h2><span class="n">4</span>Speaker Separation — Whose Emotion Is It?</h2>
+<div class="oneline">When several people speak, show each person's emotion separately.</div>
+
+<h3>Why it is needed</h3>
+<p>Drama is mostly conversation between two or more people. Emotion is relational — <strong>"A is angry at B"</strong> is the substance of a scene, but right now only "someone is angry" comes through.</p>
+
+<h3>How it works</h3>
+<ul>
+  <li>Extract a speaker signature per utterance, then cluster similar ones (works in real time)</li>
+  <li>The number of speakers does not need to be known in advance</li>
+  <li><strong>Distinguish by position, not color</strong> — A on the left, B on the right</li>
+</ul>
+
+<div class="warn"><strong>Why not color?</strong> Color already encodes emotion (red = anger). Using it for speaker identity too would make the two signals collide and neither would be readable.</div>
+
+<div class="effect"><strong>Effect.</strong> Multi-person scenes become legible, and relational emotion comes through. This mirrors <em>role shift</em> in sign language interpreting, where interpreters shift body position to indicate different characters — so the design has precedent.</div>
+
+<!-- 5 -->
+<h2 class="section-break"><span class="n">5</span>Hybrid Rendering — Measure What Can Be Measured</h2>
+<div class="oneline">Only color comes from the AI's emotion judgment; motion, thickness, brightness, and speed come directly from the actual voice.</div>
+
+<h3>Why it is needed</h3>
+<p>All of the current error originates in the classification step. But <strong>the prosody measurements themselves are never wrong</strong> — an F0 of 187 Hz is a fact. Conversely, rendering from raw prosody alone would lose the emotion category entirely: excited joy and anger look identical in motion. So the boundary is drawn where it belongs — <strong>measurement stays measurement, and only inference goes to the AI.</strong></p>
+
+<h3>How it works</h3>
+<table>
+  <tr><th style="width:42%">Visual channel</th><th style="width:33%">Source</th><th>Error</th></tr>
+  <tr><td>Color (hue)</td><td>AI emotion classification</td><td>Present</td></tr>
+  <tr><td>Motion, thickness, brightness, speed, tremor</td><td>Measured prosody</td><td><strong>None</strong></td></tr>
+</table>
+
+<p>This split is supported by our own data: <strong>arousal is measured reliably from acoustics (r = 0.73), while valence is weak (r = 0.42).</strong> The motion-family channels are arousal-driven, so measurement is accurate there; color is valence- and category-driven, so it genuinely requires inference.</p>
+
+<h3>Follow-up experiment</h3>
+<p>Compare <strong>full-AI</strong> against <strong>hybrid</strong> rendering on identical clips. Hybrid may well win — a trembling voice would tremble on screen by exactly that amount, rather than being flattened into a category-based motion preset.</p>
+
+<div class="effect"><strong>Effect.</strong> "But half of it is wrong" becomes <em>"Only one channel — color — can be wrong. The other four are a direct transcription of the actual voice, so they carry no error."</em></div>
+
+<!-- 6 -->
+<h2><span class="n">6</span>Personal Calibration — Available On Demand</h2>
+<div class="oneline">Users who want to can run a short test in settings, and the channels that work best for them are strengthened.</div>
+
+<h3>Why it is needed</h3>
+<p>Deaf and hard-of-hearing people are not a uniform group. Residual hearing, age of onset, and sign-language use all differ, and <strong>some people read color well while others read motion well.</strong> There is also a question we currently cannot answer: "Have you verified that the mapping is intuitive?"</p>
+
+<h3>How it works</h3>
+<ul>
+  <li><strong>Not forced at first launch</strong> — the research-based defaults work immediately</li>
+  <li>Settings → "Customize visual expression" → a 2-minute test, repeatable at any time</li>
+  <li>The test shows a visualization and asks "Which emotion is this?" 12–15 times, <strong>measuring each channel separately</strong></li>
+  <li>Manual sliders are available for users who prefer to adjust without the test</li>
+</ul>
+
+<div class="effect"><strong>Effect.</strong> An unverified weakness turns into a feature: <em>"We measure how intuitive the mapping is for each individual user and adapt to them."</em> The calibration data from those users then becomes research evidence on mapping intuitiveness in its own right.</div>
+
+<!-- Overview -->
+<h2 class="section-break" style="border-top:none; padding-top:0;">Overview</h2>
+<table>
+  <tr><th style="width:5%">#</th><th style="width:30%">Improvement</th><th style="width:45%">Problem it solves</th><th>Difficulty</th></tr>
+  <tr><td>1</td><td>Haptic channel</td><td>Visual channel saturation</td><td>Medium (hardware)</td></tr>
+  <tr><td>2</td><td>Low-confidence learning loop</td><td>49.6% accuracy / domain mismatch</td><td>Low</td></tr>
+  <tr><td>3</td><td>Audio source separation</td><td>Noise sensitivity + missing score</td><td>Medium–High</td></tr>
+  <tr><td>4</td><td>Speaker separation</td><td>Multi-person scenes collapse</td><td>Medium</td></tr>
+  <tr><td>5</td><td>Hybrid rendering</td><td>Classification error</td><td>Medium</td></tr>
+  <tr><td>6</td><td>Personal calibration</td><td>Unverified mapping intuitiveness</td><td>Low</td></tr>
+</table>
+
+<h2 style="border-top:none;">How They Reinforce Each Other</h2>
+<ul>
+  <li><strong>3 → 1</strong> — With separation, the haptics follow <em>voice</em> loudness only, not the background music</li>
+  <li><strong>3 → 5</strong> — Cleaner vocals mean more accurate prosody, which directly sharpens hybrid rendering</li>
+  <li><strong>4 → 1</strong> — With two motors, each speaker can vibrate at a different location (left wrist = A, right = B)</li>
+  <li><strong>2 ↔ 6</strong> — Both ask the user about emotion, so they <em>share the same UI component</em></li>
+  <li><strong>5 ↔ 6</strong> — Calibration can also decide whether a given user is better served by more AI color or more raw prosody</li>
+</ul>
+
+<h2 style="border-top:none;">Suggested Order of Work</h2>
+<table>
+  <tr><th style="width:22%">When</th><th>Task</th></tr>
+  <tr><td><strong>Immediately</strong></td><td>#2 survey UI &middot; order hardware parts <span class="muted">(data takes time to accumulate; shipping takes 1–2 weeks)</span></td></tr>
+  <tr><td>Weeks 1–2</td><td>#5 hybrid rendering &middot; #4 speaker separation</td></tr>
+  <tr><td>Weeks 2–3</td><td>#1 haptic assembly &middot; #6 calibration <span class="muted">(shares UI with #2)</span></td></tr>
+  <tr><td>Weeks 3–4</td><td>#3 source separation <span class="muted">(heaviest, most performance risk)</span></td></tr>
+  <tr><td>Final</td><td>#2 retraining &middot; #5 comparison experiment</td></tr>
+</table>
+
+</body>
+</html>

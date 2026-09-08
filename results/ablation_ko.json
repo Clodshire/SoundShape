@@ -1,0 +1,61 @@
+{
+  "A_prosody_only": {
+    "accuracy": 0.2177,
+    "macro_f1": 0.2108,
+    "per_class_f1": {
+      "angry": 0.2373,
+      "disgust": 0.1723,
+      "fear": 0.1073,
+      "happiness": 0.1737,
+      "neutral": 0.4007,
+      "sadness": 0.1885,
+      "surprise": 0.1956
+    }
+  },
+  "B_wav2vec2_only": {
+    "accuracy": 0.4303,
+    "macro_f1": 0.4306,
+    "per_class_f1": {
+      "angry": 0.3803,
+      "disgust": 0.3984,
+      "fear": 0.5493,
+      "happiness": 0.4286,
+      "neutral": 0.4025,
+      "sadness": 0.384,
+      "surprise": 0.4713
+    }
+  },
+  "C_combined": {
+    "accuracy": 0.436,
+    "macro_f1": 0.4362,
+    "per_class_f1": {
+      "angry": 0.4035,
+      "disgust": 0.3892,
+      "fear": 0.5549,
+      "happiness": 0.433,
+      "neutral": 0.4066,
+      "sadness": 0.3907,
+      "surprise": 0.4758
+    }
+  },
+  "D_combined_plus_text": {
+    "accuracy": 0.4526,
+    "macro_f1": 0.4527,
+    "per_class_f1": {
+      "angry": 0.4159,
+      "disgust": 0.411,
+      "fear": 0.5697,
+      "happiness": 0.4727,
+      "neutral": 0.4169,
+      "sadness": 0.4099,
+      "surprise": 0.4729
+    },
+    "n_text_corrected": 138,
+    "score_argmax_baseline_acc": 0.4526,
+    "n_fixed": 42,
+    "n_broken": 42,
+    "n_wrong_to_wrong": 54,
+    "in_uncertain_band": 327,
+    "note": "text correction net accuracy 0 (42 fixed / 42 broken). Gains on emotional classes (angry +5, disgust +7, fear +5, happiness +11 net); losses on valence-ambiguous classes (neutral -16, surprise -12 net) — the binary pos/neg text model reads neutral/surprise transcripts as negative (mean valence -0.35/-0.43) and pushes them into negative emotion classes. The +1.7%p gap between D (45.3%) and C (43.6%) is a prediction-rule artifact (ovr decision-score argmax vs ovo voting), NOT a text contribution."
+  }
+}

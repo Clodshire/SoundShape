@@ -1,0 +1,18 @@
+{
+  "_doc": "Audio source separation. Splits the track into voice and music so each can be processed on its own terms: prosody stops being contaminated by the score, and the score — which carries a large share of the emotion in film and drama, and which a Deaf viewer currently receives none of — gets a channel of its own.",
+  "_citation": "Voice and music communicate emotion through a largely shared acoustic code — tempo/rate, intensity, timbre (Juslin & Laukka 2003, 'Different channels, same code?'), which is why the same measurement logic transfers. Separation model is HDemucs (Defossez et al. 2021), used via the torchaudio bundle so no extra dependency is introduced.",
+  "enabled": true,
+  "_enabled_doc": "On by default. The RAVDESS comparison showed separation recovers most of what loud music costs (60.8% → 71.5%, p < 0.001), and the threshold below keeps it from running in the conditions where it measured no significant benefit — so the cost is paid only where it buys something.",
+  "model": "HDEMUCS_HIGH_MUSDB_PLUS",
+  "device": "cpu",
+  "_device_doc": "Measured on this machine (M3 MacBook Air, 52s clip): CPU 10.1s vs MPS 11.9s. MPS is SLOWER here — the model is small enough that transfer overhead outweighs the compute win on unified memory. Do not 'optimise' this to mps without re-measuring.",
+  "chunk_seconds": 30.0,
+  "_chunk_doc": "Separation runs on chunks rather than the whole file so it can overlap with streaming playback and so memory stays flat on long videos. 30s is comfortably above the model's receptive field.",
+  "music_probe_seconds": 20.0,
+  "music_energy_ratio_min": 0.45,
+  "_probe_doc": "Most clips people try have no score at all, and of those that do, many are mixed with the dialogue well clear of it — a case where separation measurably does NOT help. So the first music_probe_seconds are separated and the music track's RMS compared with the mixture's, and the rest is skipped below this ratio.\nThe value is set from measurement, not taste. Ratios measured on one speech clip, against what the same conditions did to accuracy on RAVDESS: speech alone 0.024; music 10 dB under the dialogue 0.281, gain +2.3%p, NOT significant (p=0.27); music 5 dB under, 0.472, gain +5.6%p, significant (p=0.009); music level with the dialogue 0.697, gain +10.6%p (p<0.001). 0.45 is therefore the widest useful setting: above the condition that gained nothing, at or below the lowest one that gained something.",
+  "keep_vocals_for_prosody": true,
+  "_prosody_doc": "When separation runs, prosody and ASR read the VOCALS track rather than the mixture. That is the half of the feature that fixes the noise-sensitivity limitation.",
+  "max_seconds": 3600.0,
+  "_limit_doc": "Refuse absurdly long inputs rather than silently occupying the machine for an hour."
+}

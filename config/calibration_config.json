@@ -1,0 +1,66 @@
+{
+  "_doc": "Personal calibration. Measures how well a viewer reads each visual channel, then reweights the channels that have a dynamic range. Two trial kinds, because a channel can fail for two different reasons that need opposite fixes: DISCRIMINATION asks whether the difference is visible at all (a sensory question — Green & Swets 1966), SEMANTIC asks whether the difference means anything to this person. Visible-but-meaningless is fixed by shifting load away; invisible is fixed by widening the range.",
+  "_citation": "Reliability-weighted combination: humans weight sensory cues by their reliability, near-optimally (Ernst & Banks 2002) — so emphasising the channel a viewer reads accurately matches their own processing rather than imposing an arbitrary rule. Floor at 0.6 preserves redundant coding, which measurably improves accuracy and speed (Miller 1982) and keeps a fallback when the strong channel is unavailable (dark scene, small screen). Whether personalisation helps at all must be shown as a CROSSOVER interaction, not a raw improvement — the failure mode that sank learning-styles research (Pashler et al. 2008).",
+  "enabled": true,
+  "version": "1.0.0",
+  "channels": {
+    "hue": {
+      "label": "색상",
+      "adjustable": "saturation",
+      "asks": "category"
+    },
+    "shape": {
+      "label": "모양",
+      "adjustable": null,
+      "asks": "category"
+    },
+    "size": {
+      "label": "크기",
+      "adjustable": "size",
+      "asks": "intensity"
+    },
+    "motion": {
+      "label": "움직임",
+      "adjustable": "motion",
+      "asks": "intensity"
+    }
+  },
+  "_channels_doc": "`adjustable` names the gain this channel's score scales. shape has none — it is categorical, so a shape that does not communicate cannot be made to communicate by turning a knob; its load is redistributed instead. `asks` is what the channel actually encodes, which decides the question: hue and shape carry emotion IDENTITY, size and motion carry INTENSITY.",
+  "trials": {
+    "discrimination_per_channel": 2,
+    "semantic_per_channel": 3,
+    "crossover_pairs": 10
+  },
+  "_trials_doc": "Short mode = discrimination (4 channels x 2) + semantic (4 x 3) = 20 trials, about 2.5 minutes. Full mode adds crossover_pairs x 2 = 20 more, half rendered with the default weights and half with the participant's own, randomly interleaved and unlabelled.",
+  "weights": {
+    "neutral": 1.0,
+    "boost": 1.4,
+    "reduce": 0.6,
+    "redistribute_share": 0.2,
+    "min": 0.6,
+    "max": 1.4,
+    "pass_threshold": 0.6
+  },
+  "_weights_doc": "pass_threshold is the per-channel accuracy at or above which a channel counts as read successfully. With only 2-3 trials per channel this is a coarse signal by construction — it is a preference estimate for one person, not a psychometric measurement. The research value is in the aggregate across participants.",
+  "emotions": [
+    "joy",
+    "sadness",
+    "anger",
+    "fear",
+    "sarcasm",
+    "neutral"
+  ],
+  "_emotions_doc": "Matches the feedback prompt's options so a participant meets one vocabulary across the whole product.",
+  "questions": {
+    "discrimination": "이 둘이 같아 보이나요, 달라 보이나요?",
+    "discrimination_same": "같아 보여요",
+    "discrimination_diff": "달라 보여요",
+    "category": "이 표현은 어떤 감정으로 보이나요?",
+    "intensity": "어느 쪽이 더 강한 감정으로 보이나요?",
+    "intensity_left": "왼쪽",
+    "intensity_right": "오른쪽",
+    "unsure": "모르겠음"
+  },
+  "min_response_ms": 500,
+  "_quality_doc": "Answers faster than this are dropped as careless, the same rule the feedback loop uses."
+}

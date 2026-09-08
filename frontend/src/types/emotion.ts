@@ -22,6 +22,9 @@ export interface Emotion {
   confidence?: number; // [0, 1] — category confidence
   dominance?: number; // [-1, +1] — from audeering dimensional model
   category_short?: string; // "ang"|"hap"|"neu"|"sad" — backend code
+  // Present only when the classifier was unsure enough to ask the viewer.
+  // Opaque handle for features held server-side; see backend/pipeline/feedback.py.
+  feedback_id?: string;
 }
 
 export type ShapeKind =
@@ -97,6 +100,15 @@ export interface TimelineFrame {
   emotion: Emotion;
   words?: Word[];
   prosody?: Prosody;
+  // Per-video prosody baseline the backend rendered this frame against (see
+  // backend/mapping/reference.py). Passed straight back into the mapping so a
+  // locally recomputed visual matches the backend's byte for byte. Null until
+  // enough segments have accumulated to form a baseline.
+  reference?: Prosody | null;
+  // True when this line is spoken by someone other than the previous one.
+  // Rendered as a leading dash — the subtitle convention for a change of
+  // speaker, so viewers already know how to read it.
+  speaker_changed?: boolean;
   visual?: VisualSpec; // backend pre-computes this; frontend also recomputes locally
 }
 

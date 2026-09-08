@@ -15,6 +15,13 @@ export function SubtitleLayer({ frame, currentTime }: Props) {
   return (
     <div className="max-w-2xl text-center">
       <p className="text-3xl font-medium leading-snug tracking-tight drop-shadow-[0_2px_10px_rgba(0,0,0,0.95)]">
+        {/* An em dash opening the line is the subtitle convention for a change
+            of speaker, so it needs no legend. Held at the same brightness as
+            spoken text rather than following the word highlight — it belongs
+            to the whole line, not to any word in it. */}
+        {frame.speaker_changed && (
+          <span className="text-white/85">{"\u2014 "}</span>
+        )}
         {words && words.length > 0 ? (
           words.map((w, i) => {
             const active = currentTime >= w.start && currentTime < w.end;

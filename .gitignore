@@ -44,6 +44,14 @@ data/datasets/*
 data/timelines/*
 !data/timelines/.gitkeep
 
+# Responses collected from real people. Viewer feedback holds the numeric
+# feature vector of what someone said; calibration holds what a named group of
+# participants answered. Neither belongs in a public repository.
+data/feedback/*
+!data/feedback/.gitkeep
+data/calibration/*
+!data/calibration/.gitkeep
+
 # Sample audio is small and useful for collaborators — keep it tracked.
 # If you commit copyrighted clips (drama scenes), uncomment to ignore:
 # data/samples/*.mp4
@@ -53,3 +61,7 @@ data/timelines/*
 *.log
 dist/
 build/
+
+# Local screen recordings (large, not part of the repo history)
+*.mov
+

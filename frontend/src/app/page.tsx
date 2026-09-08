@@ -5,17 +5,32 @@ import { ControlPanel } from "@/components/ControlPanel";
 import { EmotionCanvas } from "@/components/EmotionCanvas";
 import { EmotionTimeline } from "@/components/EmotionTimeline";
 import { FileUpload } from "@/components/FileUpload";
+import { CalibrationTest } from "@/components/CalibrationTest";
 import { Legend } from "@/components/Legend";
 import { Player } from "@/components/Player";
 import { SubtitleLayer } from "@/components/SubtitleLayer";
 import { processFileStream } from "@/lib/api";
-import { mapEmotionToVisual } from "@/lib/mapping";
+import { loadWeights } from "@/lib/calibrationStore";
+import {
+  DEFAULT_RENDER_MODE,
+  mapEmotionToVisual,
+  type ChannelWeights,
+  type RenderMode,
+} from "@/lib/mapping";
 import {
   DEMO_TIMELINE,
   DEMO_TIMELINE_DURATION,
   getCurrentFrame,
 } from "@/lib/timeline";
 import type { TimelineFrame } from "@/types/emotion";
+import { buildTimelineFromScript } from "@/lib/scriptMode";
+import { FeedbackPrompt } from "@/components/FeedbackPrompt";
+import {
+  type FeedbackConfig,
+  PromptPacer,
+  fetchFeedbackConfig,
+  getConsent,
+} from "@/lib/feedbackClient";
 
 interface Source {
   label: string;
@@ -46,6 +61,18 @@ export default function Home() {
   const [showSoundShape, setShowSoundShape] = useState(true);
   const [showCaptions, setShowCaptions] = useState(true);
   const [showLegend, setShowLegend] = useState(false);
+  // The measurement readout is for us and for judges, not for a viewer. Being
+  // able to switch it off mid-demo shows the two audiences side by side.
+  const [showDetails, setShowDetails] = useState(true);
+  // Rendering mode is switchable at runtime so the two can be compared on the
+  // same clip without reprocessing. Seeded from the config so the default the
+  // backend ships is the default seen here.
+  const [renderMode, setRenderMode] = useState<RenderMode>(DEFAULT_RENDER_MODE);
+  const [calibrating, setCalibrating] = useState(false);
+  // Read after mount, never during render — localStorage does not exist on the
+  // server and reading it while rendering would mismatch the hydrated markup.
+  const [weights, setWeights] = useState<ChannelWeights | null>(null);
+  useEffect(() => setWeights(loadWeights()), []);
 
   // Streaming state
   const [isProcessing, setIsProcessing] = useState(false); // stream open (head not yet ready)
@@ -55,6 +82,20 @@ export default function Home() {
   const [processingError, setProcessingError] = useState<string | null>(null);
   const [startedAt, setStartedAt] = useState<number | null>(null);
   const [elapsedMs, setElapsedMs] = useState(0);
+
+  // Script mode: play a hand-written .srt instead of the model's interpretation.
+  const [scriptFile, setScriptFile] = useState<File | null>(null);
+  const [scriptSrt, setScriptSrt] = useState("");
+
+  // Low-confidence feedback loop: ask the viewer about moments the classifier
+  // was unsure of, and use those answers to retrain on in-domain data.
+  const [fbConfig, setFbConfig] = useState<FeedbackConfig | null>(null);
+  const [fbConsent, setFbConsent] = useState<"granted" | "declined" | "unset">(
+    "unset",
+  );
+  const [activePrompt, setActivePrompt] = useState<string | null>(null);
+  const [promptNeedsConsent, setPromptNeedsConsent] = useState(false);
+  const pacerRef = useRef<PromptPacer | null>(null);
 
   const mediaRef = useRef<HTMLMediaElement | null>(null);
   const rafRef = useRef<number | null>(null);
@@ -250,6 +291,37 @@ export default function Home() {
     }
   }, []);
 
+  // Play a user-authored script (.srt with [emotion] tags) synced to their
+  // media, bypassing the ASR + emotion model entirely.
+  const handleScript = useCallback((file: File, srt: string) => {
+    const { timeline, totalDuration } = buildTimelineFromScript(srt);
+    if (timeline.length === 0) {
+      setProcessingError(
+        "스크립트에서 자막을 찾지 못했어요. .srt 형식(번호 / 00:00:00,000 --> 00:00:00,000 / 텍스트)인지 확인해 주세요.",
+      );
+      return;
+    }
+    if (prevUrlRef.current) URL.revokeObjectURL(prevUrlRef.current);
+    const url = URL.createObjectURL(file);
+    prevUrlRef.current = url;
+    streamRef.current = { horizon: Infinity, done: true };
+    bufferingRef.current = false;
+    setProcessingError(null);
+    setIsProcessing(false);
+    setStreamDone(true);
+    setPrebufferReady(false); // lets the start effect play the media
+    setBuffering(false);
+    setCurrentTime(0);
+    setIsPlaying(false);
+    setSource({
+      label: `Script · ${file.name}`,
+      timeline,
+      totalDuration,
+      mediaUrl: url,
+      mediaKind: file.type.startsWith("video") ? "video" : "audio",
+    });
+  }, []);
+
   const backToDemo = useCallback(() => {
     if (prevUrlRef.current) {
       URL.revokeObjectURL(prevUrlRef.current);
@@ -267,10 +339,48 @@ export default function Home() {
     setBuffering(false);
   }, []);
 
+  // Load prompt settings from the backend once (single source of truth), and
+  // read the stored consent decision.
+  useEffect(() => {
+    let cancelled = false;
+    void fetchFeedbackConfig().then((cfg) => {
+      if (cancelled || !cfg?.enabled) return;
+      setFbConfig(cfg);
+      pacerRef.current = new PromptPacer(
+        cfg.min_interval_seconds,
+        cfg.max_prompts_per_video,
+      );
+    });
+    setFbConsent(getConsent());
+    return () => {
+      cancelled = true;
+    };
+  }, []);
+
+  // New media → the per-video prompt budget starts over.
+  useEffect(() => {
+    pacerRef.current?.resetForNewVideo();
+    setActivePrompt(null);
+  }, [source.mediaUrl, source.label]);
+
   const currentFrame = useMemo(
     () => getCurrentFrame(source.timeline, currentTime),
     [source.timeline, currentTime],
   );
+
+  // Surface a prompt when playback reaches a segment the classifier was
+  // unsure about. Pacing (interval, per-video cap, no repeats) lives in
+  // PromptPacer; this effect only decides "now, this one".
+  useEffect(() => {
+    if (!fbConfig || fbConsent === "declined" || activePrompt) return;
+    const id = currentFrame?.emotion?.feedback_id;
+    if (!id) return;
+    const pacer = pacerRef.current;
+    if (!pacer?.canShow(id)) return;
+    pacer.markShown(id);
+    setPromptNeedsConsent(fbConsent === "unset");
+    setActivePrompt(id);
+  }, [currentFrame, fbConfig, fbConsent, activePrompt]);
 
   const visual = useMemo(
     () =>
@@ -279,9 +389,26 @@ export default function Home() {
           source.timeline[0]?.emotion ??
           DEMO_TIMELINE[0].emotion,
         currentFrame?.prosody,
+        currentFrame?.reference,
+        renderMode,
+        weights,
       ),
-    [currentFrame, source.timeline],
+    [currentFrame, source.timeline, renderMode, weights],
   );
+  // Confidence is handed to the renderer as its own value rather than folded
+  // into colour: in hybrid mode saturation already means measured arousal, so
+  // dimming it for doubt made "calm voice" and "unsure classifier" look the same.
+  const fieldVisual = useMemo(
+    () => ({
+      ...visual,
+      uncertainty:
+        currentFrame?.emotion?.confidence == null
+          ? 0
+          : Math.max(0, Math.min(1, 1 - currentFrame.emotion.confidence / 0.85)),
+    }),
+    [visual, currentFrame],
+  );
+
 
   const isDemo = source === DEMO_SOURCE;
   const isVideo = source.mediaKind === "video";
@@ -335,6 +462,66 @@ export default function Home() {
           </div>
         )}
 
+        {isDemo && (
+          <details className="rounded-xl border border-white/10 bg-white/[0.03] px-4 py-3 text-sm">
+            <summary className="cursor-pointer select-none text-white/70">
+              ✎ 내 스크립트로 재생 (.srt) — 모델 해석 대신 내가 정한 자막·감정으로
+            </summary>
+            <div className="mt-4 space-y-4">
+              <div>
+                <label className="mb-1 block text-xs text-white/50">
+                  1. 영상/오디오 파일
+                </label>
+                <input
+                  type="file"
+                  accept="audio/*,video/*"
+                  onChange={(e) => setScriptFile(e.target.files?.[0] ?? null)}
+                  className="block w-full text-xs text-white/70 file:mr-3 file:rounded-full file:border-0 file:bg-white/10 file:px-3 file:py-1 file:text-white/80"
+                />
+                {scriptFile && (
+                  <div className="mt-1 truncate text-xs text-white/40">
+                    {scriptFile.name}
+                  </div>
+                )}
+              </div>
+              <div>
+                <label className="mb-1 block text-xs text-white/50">
+                  2. 스크립트 (.srt · 각 줄 앞에 [비꼼]/[진심]/[분노] 등 태그 가능)
+                </label>
+                <input
+                  type="file"
+                  accept=".srt,text/plain"
+                  onChange={(e) => {
+                    const f = e.target.files?.[0];
+                    if (f) f.text().then(setScriptSrt);
+                  }}
+                  className="mb-2 block w-full text-xs text-white/70 file:mr-3 file:rounded-full file:border-0 file:bg-white/10 file:px-3 file:py-1 file:text-white/80"
+                />
+                <textarea
+                  value={scriptSrt}
+                  onChange={(e) => setScriptSrt(e.target.value)}
+                  rows={6}
+                  placeholder={
+                    "1\n00:00:00,300 --> 00:00:02,600\n[비꼼] And so what? You convince me,\n\n2\n00:00:02,600 --> 00:00:05,000\n[비꼼] maybe tonight we just sneak in and shampoo her carpet."
+                  }
+                  className="w-full rounded-lg border border-white/10 bg-black/40 p-2 font-mono text-xs leading-relaxed text-white/80 placeholder:text-white/25"
+                />
+                <div className="mt-1 text-xs text-white/35">
+                  태그: 비꼼·진심·위로·분노·짜증·슬픔·체념·놀람·기쁨·공포·중립
+                </div>
+              </div>
+              <button
+                type="button"
+                disabled={!scriptFile || !scriptSrt.trim()}
+                onClick={() => scriptFile && handleScript(scriptFile, scriptSrt)}
+                className="rounded-full bg-white px-4 py-1.5 text-xs font-medium text-black transition hover:bg-white/90 disabled:cursor-not-allowed disabled:opacity-40"
+              >
+                ▶ 내 스크립트로 재생
+              </button>
+            </div>
+          </details>
+        )}
+
         {processingError && (
           <div className="rounded-xl border border-red-500/30 bg-red-500/10 px-4 py-3 text-sm text-red-200">
             <div className="font-medium">Processing failed</div>
@@ -370,18 +557,34 @@ export default function Home() {
             />
           )}
 
+          {/* The calibration test needs its own WebGL contexts and this one
+              is behind a full-screen dialog anyway. Releasing it while the
+              test runs keeps the stimuli on the real renderer instead of the
+              shape-less 2D fallback. */}
           {showSoundShape &&
+            !calibrating &&
             (isVideo ? (
-              <div className="pointer-events-none absolute inset-x-0 bottom-16 h-2/5 opacity-95">
+              <div className="pointer-events-none absolute inset-x-0 bottom-[15%] h-[36%] opacity-95">
                 <EmotionCanvas
-                  visual={visual}
+                  visual={fieldVisual}
                   changedAt={currentFrame?.t ?? 0}
                   transparent
                 />
               </div>
             ) : (
-              <div className="absolute inset-0">
-                <EmotionCanvas visual={visual} changedAt={currentFrame?.t ?? 0} />
+              // The wave draws down the middle of its own canvas, so the
+              // canvas is a band rather than the whole frame: centred at ~33%
+              // from the bottom, which sits it just above the caption line at
+              // 13% instead of splitting the picture in half.
+              <div className="pointer-events-none absolute inset-x-0 bottom-[15%] h-[36%]">
+                {/* Transparent, like the video overlay. The canvas used to fill
+                    the frame, so its own tinted background went unnoticed; as a
+                    band it would draw a visible rectangle against the player. */}
+                <EmotionCanvas
+                  visual={fieldVisual}
+                  changedAt={currentFrame?.t ?? 0}
+                  transparent
+                />
               </div>
             ))}
 
@@ -410,7 +613,7 @@ export default function Home() {
           )}
 
           {showCaptions && (
-            <div className="pointer-events-none absolute inset-x-0 bottom-5 flex justify-center px-6">
+            <div className="pointer-events-none absolute inset-x-0 bottom-[13%] flex justify-center px-6">
               <SubtitleLayer frame={currentFrame} currentTime={currentTime} />
             </div>
           )}
@@ -423,9 +626,33 @@ export default function Home() {
           onToggleCaptions={() => setShowCaptions((v) => !v)}
           showLegend={showLegend}
           onToggleLegend={() => setShowLegend((v) => !v)}
+          renderMode={renderMode}
+          renderModeAvailable={currentFrame?.prosody != null}
+          onToggleRenderMode={() =>
+            setRenderMode((m) => (m === "hybrid" ? "full_ai" : "hybrid"))
+          }
+          showDetails={showDetails}
+          onToggleDetails={() => setShowDetails((v) => !v)}
         />
 
         {showLegend && <Legend />}
+
+        <button
+          type="button"
+          onClick={() => setCalibrating(true)}
+          className="self-start text-xs text-white/35 underline-offset-4 transition hover:text-white/70 hover:underline"
+        >
+          시각 표현 맞춤 설정 (약 2분 30초)
+        </button>
+
+        {calibrating && (
+          <CalibrationTest
+            onClose={() => {
+              setCalibrating(false);
+              setWeights(loadWeights()); // pick up a result just produced
+            }}
+          />
+        )}
 
         <section className="space-y-2">
           <div className="flex items-center justify-between text-xs text-white/40">
@@ -448,7 +675,7 @@ export default function Home() {
           onRestart={restart}
         />
 
-        {currentFrame && (
+        {currentFrame && showDetails && (
           <section className="rounded-xl border border-white/10 bg-white/[0.03] p-4 text-xs text-white/60">
             <div className="grid grid-cols-2 gap-x-6 gap-y-2 sm:grid-cols-4">
               <Field label="Category" value={currentFrame.emotion.category} />
@@ -489,6 +716,22 @@ export default function Home() {
       <footer className="mt-10 text-xs text-white/30">
         SoundShape · KCF 2026 · streaming (prebuffer + lookahead)
       </footer>
+
+      {activePrompt && fbConfig && (
+        <FeedbackPrompt
+          key={activePrompt}
+          feedbackId={activePrompt}
+          config={fbConfig}
+          needsConsent={promptNeedsConsent}
+          onClose={() => setActivePrompt(null)}
+          onConsentDecided={(granted) => {
+            setFbConsent(granted ? "granted" : "declined");
+            // Consent replaced this prompt; ask again at the next uncertain
+            // moment rather than switching cards under the viewer.
+            setActivePrompt(null);
+          }}
+        />
+      )}
     </div>
   );
 }

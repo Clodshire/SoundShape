@@ -1,0 +1,602 @@
+[
+ {
+  "emotion": "neutral",
+  "valence": -0.15381063430309294,
+  "arousal": -0.02695506582260132
+ },
+ {
+  "emotion": "neutral",
+  "valence": -0.26535473449230185,
+  "arousal": -0.03354130685329437
+ },
+ {
+  "emotion": "neutral",
+  "valence": -0.0876777704000472,
+  "arousal": -0.12666362664699557
+ },
+ {
+  "emotion": "neutral",
+  "valence": -0.20117117757797232,
+  "arousal": -0.14758645322322847
+ },
+ {
+  "emotion": "calm",
+  "valence": -0.0702923303604126,
+  "arousal": -0.0057341060996055765
+ },
+ {
+  "emotion": "calm",
+  "valence": -0.064628428030014,
+  "arousal": -0.091414270234108
+ },
+ {
+  "emotion": "calm",
+  "valence": -0.15967814397811886,
+  "arousal": -0.20065104973316195
+ },
+ {
+  "emotion": "calm",
+  "valence": -0.24760886220932,
+  "arousal": -0.2700865885972977
+ },
+ {
+  "emotion": "calm",
+  "valence": -0.21783944041728964,
+  "arousal": -0.3349778160572052
+ },
+ {
+  "emotion": "calm",
+  "valence": -0.21799511303901664,
+  "arousal": -0.3075644639015198
+ },
+ {
+  "emotion": "calm",
+  "valence": -0.30717950863838195,
+  "arousal": -0.4171345715284348
+ },
+ {
+  "emotion": "calm",
+  "valence": -0.29951133570671074,
+  "arousal": -0.4279195055246353
+ },
+ {
+  "emotion": "happy",
+  "valence": -0.12549607744216917,
+  "arousal": 0.123718186378479
+ },
+ {
+  "emotion": "happy",
+  "valence": 0.018562514019012488,
+  "arousal": 0.21345558075904847
+ },
+ {
+  "emotion": "happy",
+  "valence": -0.013422621202468843,
+  "arousal": 0.0706877916932106
+ },
+ {
+  "emotion": "happy",
+  "valence": -0.12641075491905207,
+  "arousal": 0.010070550870895381
+ },
+ {
+  "emotion": "happy",
+  "valence": -0.18757684407234188,
+  "arousal": 0.3165437287807465
+ },
+ {
+  "emotion": "happy",
+  "valence": -0.15728786058425903,
+  "arousal": 0.33439695711135864
+ },
+ {
+  "emotion": "happy",
+  "valence": -0.06133591175079345,
+  "arousal": 0.28495911960601805
+ },
+ {
+  "emotion": "happy",
+  "valence": 0.15877065668106083,
+  "arousal": 0.3620223481655121
+ },
+ {
+  "emotion": "sad",
+  "valence": 0.02738377053737645,
+  "arousal": -0.09094661769866946
+ },
+ {
+  "emotion": "sad",
+  "valence": -0.2685360560417175,
+  "arousal": -0.08899630675315859
+ },
+ {
+  "emotion": "sad",
+  "valence": 0.0035130851268768692,
+  "arousal": -0.12811040728092196
+ },
+ {
+  "emotion": "sad",
+  "valence": -0.06322495465278621,
+  "arousal": -0.17296966948509218
+ },
+ {
+  "emotion": "sad",
+  "valence": -0.1472031323432922,
+  "arousal": -0.13289555912017825
+ },
+ {
+  "emotion": "sad",
+  "valence": 0.11710120947360997,
+  "arousal": 0.13503421077728273
+ },
+ {
+  "emotion": "sad",
+  "valence": 0.10086505050659184,
+  "arousal": 0.009175220346450796
+ },
+ {
+  "emotion": "sad",
+  "valence": 0.06428878283500677,
+  "arousal": 0.10741564767360687
+ },
+ {
+  "emotion": "angry",
+  "valence": -0.20045365469455712,
+  "arousal": 0.6411107271671296
+ },
+ {
+  "emotion": "angry",
+  "valence": -0.30349936637878416,
+  "arousal": 0.6595663048744203
+ },
+ {
+  "emotion": "angry",
+  "valence": -0.026283876085281377,
+  "arousal": 0.288162793970108
+ },
+ {
+  "emotion": "angry",
+  "valence": -0.049678440642356825,
+  "arousal": 0.30275946235656737
+ },
+ {
+  "emotion": "angry",
+  "valence": -0.8643076239824296,
+  "arousal": 1.0
+ },
+ {
+  "emotion": "angry",
+  "valence": -0.7340802741765976,
+  "arousal": 0.9157893674612047
+ },
+ {
+  "emotion": "angry",
+  "valence": -0.4277019207000732,
+  "arousal": 0.9336970952510835
+ },
+ {
+  "emotion": "angry",
+  "valence": -0.8105681905031205,
+  "arousal": 0.9914886198043824
+ },
+ {
+  "emotion": "fearful",
+  "valence": -0.09033618865013116,
+  "arousal": 0.05966903142929077
+ },
+ {
+  "emotion": "fearful",
+  "valence": 0.055022632169723584,
+  "arousal": 0.11293325238227844
+ },
+ {
+  "emotion": "fearful",
+  "valence": -0.08346746549606321,
+  "arousal": -0.13604212698936466
+ },
+ {
+  "emotion": "fearful",
+  "valence": -0.15845638468265533,
+  "arousal": -0.20324126378297808
+ },
+ {
+  "emotion": "fearful",
+  "valence": -0.27309849679470055,
+  "arousal": 0.7020037551164627
+ },
+ {
+  "emotion": "fearful",
+  "valence": 0.21232549538612372,
+  "arousal": 0.7851207687139512
+ },
+ {
+  "emotion": "fearful",
+  "valence": 0.2544525117874146,
+  "arousal": 0.5713008924722671
+ },
+ {
+  "emotion": "fearful",
+  "valence": 0.4719053863048554,
+  "arousal": 0.7391321635007859
+ },
+ {
+  "emotion": "disgust",
+  "valence": -0.005447481679916377,
+  "arousal": 0.12858217000961303
+ },
+ {
+  "emotion": "disgust",
+  "valence": -0.05679087038040154,
+  "arousal": 0.2657946764945984
+ },
+ {
+  "emotion": "disgust",
+  "valence": -0.1384066497802734,
+  "arousal": -0.1130729015827179
+ },
+ {
+  "emotion": "disgust",
+  "valence": -0.09386561307907104,
+  "arousal": -0.014377670681476606
+ },
+ {
+  "emotion": "disgust",
+  "valence": -0.35160047807693473,
+  "arousal": 0.4925398629903794
+ },
+ {
+  "emotion": "disgust",
+  "valence": -0.10378095660209652,
+  "arousal": 0.569005335521698
+ },
+ {
+  "emotion": "disgust",
+  "valence": -0.11698927731513975,
+  "arousal": 0.3989347450256348
+ },
+ {
+  "emotion": "disgust",
+  "valence": -0.3650866127729415,
+  "arousal": 0.5101774522304535
+ },
+ {
+  "emotion": "surprised",
+  "valence": 0.06100294976234438,
+  "arousal": 0.24839221704006195
+ },
+ {
+  "emotion": "surprised",
+  "valence": 0.10543728561401372,
+  "arousal": 0.23545436818599702
+ },
+ {
+  "emotion": "surprised",
+  "valence": -0.095569830751419,
+  "arousal": -0.026195301151275635
+ },
+ {
+  "emotion": "surprised",
+  "valence": 0.039095859575271674,
+  "arousal": 0.2906182491064072
+ },
+ {
+  "emotion": "surprised",
+  "valence": 0.08665470972061162,
+  "arousal": 0.47183031675815584
+ },
+ {
+  "emotion": "surprised",
+  "valence": 0.09110180754661562,
+  "arousal": 0.4849362573385239
+ },
+ {
+  "emotion": "surprised",
+  "valence": 0.021961270236969033,
+  "arousal": 0.30855403356552125
+ },
+ {
+  "emotion": "surprised",
+  "valence": -0.04407203693389883,
+  "arousal": 0.6113913899183274
+ },
+ {
+  "emotion": "neutral",
+  "valence": 0.1654509825468064,
+  "arousal": 0.26124006109237674
+ },
+ {
+  "emotion": "neutral",
+  "valence": 0.23534222831726082,
+  "arousal": 0.2083840274333954
+ },
+ {
+  "emotion": "neutral",
+  "valence": 0.01828527617454534,
+  "arousal": 0.17096586565971375
+ },
+ {
+  "emotion": "neutral",
+  "valence": 0.12510826706886297,
+  "arousal": 0.1502873555660248
+ },
+ {
+  "emotion": "calm",
+  "valence": 0.12269378585815433,
+  "arousal": 0.023304670703411093
+ },
+ {
+  "emotion": "calm",
+  "valence": 0.07772940258979805,
+  "arousal": 0.01871498446464538
+ },
+ {
+  "emotion": "calm",
+  "valence": -0.004811424779891937,
+  "arousal": -0.03981731064319613
+ },
+ {
+  "emotion": "calm",
+  "valence": -0.03676567897796623,
+  "arousal": -0.026414788722991966
+ },
+ {
+  "emotion": "calm",
+  "valence": 0.014598335480690061,
+  "arousal": -0.06437744851112367
+ },
+ {
+  "emotion": "calm",
+  "valence": 0.02371342263221743,
+  "arousal": 0.025954349994659412
+ },
+ {
+  "emotion": "calm",
+  "valence": -0.03824877469539634,
+  "arousal": -0.11796456944942477
+ },
+ {
+  "emotion": "calm",
+  "valence": -0.022079217338561996,
+  "arousal": -0.07701908845901492
+ },
+ {
+  "emotion": "happy",
+  "valence": 0.13649529876708988,
+  "arousal": 0.2759837166309357
+ },
+ {
+  "emotion": "happy",
+  "valence": 0.26962362112998967,
+  "arousal": 0.23992593088150027
+ },
+ {
+  "emotion": "happy",
+  "valence": 0.13032255091667178,
+  "arousal": 0.15144090676307678
+ },
+ {
+  "emotion": "happy",
+  "valence": 0.04247410526275641,
+  "arousal": 0.1313251439332962
+ },
+ {
+  "emotion": "happy",
+  "valence": 0.282008294248581,
+  "arousal": 0.48762237305641176
+ },
+ {
+  "emotion": "happy",
+  "valence": 0.1672060156345368,
+  "arousal": 0.5991758140802383
+ },
+ {
+  "emotion": "happy",
+  "valence": 0.2746283057928086,
+  "arousal": 0.4472972424030304
+ },
+ {
+  "emotion": "happy",
+  "valence": 0.21728282146453864,
+  "arousal": 0.4606692247629166
+ },
+ {
+  "emotion": "sad",
+  "valence": -0.12400433964729307,
+  "arousal": 0.0028619731903076068
+ },
+ {
+  "emotion": "sad",
+  "valence": -0.10064998955726623,
+  "arousal": 0.03597058091163635
+ },
+ {
+  "emotion": "sad",
+  "valence": -0.11508467867374417,
+  "arousal": -0.09395066761970522
+ },
+ {
+  "emotion": "sad",
+  "valence": -0.19648936092853542,
+  "arousal": -0.14063951019048693
+ },
+ {
+  "emotion": "sad",
+  "valence": 0.04332010703086858,
+  "arousal": 0.18772773921489716
+ },
+ {
+  "emotion": "sad",
+  "valence": -0.12341137790679924,
+  "arousal": 0.1304056052207947
+ },
+ {
+  "emotion": "sad",
+  "valence": -0.1302738787651062,
+  "arousal": -0.05388226790428163
+ },
+ {
+  "emotion": "sad",
+  "valence": -0.0771518352985382,
+  "arousal": -0.039159096217155465
+ },
+ {
+  "emotion": "angry",
+  "valence": -0.1517723715305328,
+  "arousal": 0.4128539565801621
+ },
+ {
+  "emotion": "angry",
+  "valence": -0.25927843222618097,
+  "arousal": 0.522532814836502
+ },
+ {
+  "emotion": "angry",
+  "valence": -0.31302086162567133,
+  "arousal": 0.34447451543807983
+ },
+ {
+  "emotion": "angry",
+  "valence": -0.33821205646991725,
+  "arousal": 0.34455384380817417
+ },
+ {
+  "emotion": "angry",
+  "valence": -0.6548209012269973,
+  "arousal": 0.7628314830303193
+ },
+ {
+  "emotion": "angry",
+  "valence": -0.48076542849540704,
+  "arousal": 0.698864015197754
+ },
+ {
+  "emotion": "angry",
+  "valence": -0.48704942868947976,
+  "arousal": 0.8414743268966676
+ },
+ {
+  "emotion": "angry",
+  "valence": -0.40526224808692923,
+  "arousal": 0.7612099068641663
+ },
+ {
+  "emotion": "fearful",
+  "valence": -0.14059966335296625,
+  "arousal": 0.1925384648323059
+ },
+ {
+  "emotion": "fearful",
+  "valence": -0.17145487575531004,
+  "arousal": 0.3008100204229355
+ },
+ {
+  "emotion": "fearful",
+  "valence": -0.2532974232673645,
+  "arousal": 0.3085053689002991
+ },
+ {
+  "emotion": "fearful",
+  "valence": -0.3371271876811981,
+  "arousal": 0.24454199783802033
+ },
+ {
+  "emotion": "fearful",
+  "valence": -0.17670787611007688,
+  "arousal": 0.6032260301589967
+ },
+ {
+  "emotion": "fearful",
+  "valence": -0.295572161579132,
+  "arousal": 0.6424462742805481
+ },
+ {
+  "emotion": "fearful",
+  "valence": 0.0029394816398621293,
+  "arousal": 0.5870364629983902
+ },
+ {
+  "emotion": "fearful",
+  "valence": 0.05313001720905308,
+  "arousal": 0.5337773319721222
+ },
+ {
+  "emotion": "disgust",
+  "valence": -0.17897693996429442,
+  "arousal": 0.2683437366247177
+ },
+ {
+  "emotion": "disgust",
+  "valence": -0.1169102311134338,
+  "arousal": 0.18382984850406647
+ },
+ {
+  "emotion": "disgust",
+  "valence": -0.2744808835029602,
+  "arousal": 0.11480100719928742
+ },
+ {
+  "emotion": "disgust",
+  "valence": -0.1983614653587341,
+  "arousal": 0.10111233208179474
+ },
+ {
+  "emotion": "disgust",
+  "valence": -0.3821923951864242,
+  "arousal": 0.40311742334365847
+ },
+ {
+  "emotion": "disgust",
+  "valence": -0.3044615176677703,
+  "arousal": 0.37075728313922884
+ },
+ {
+  "emotion": "disgust",
+  "valence": -0.2770732762813568,
+  "arousal": 0.25393489894866944
+ },
+ {
+  "emotion": "disgust",
+  "valence": -0.28603960447311394,
+  "arousal": 0.24207040390968323
+ },
+ {
+  "emotion": "surprised",
+  "valence": 0.14748156852722172,
+  "arousal": 0.5646631314516068
+ },
+ {
+  "emotion": "surprised",
+  "valence": 0.15143180451393135,
+  "arousal": 0.5517872307300569
+ },
+ {
+  "emotion": "surprised",
+  "valence": 0.2173125502109528,
+  "arousal": 0.3983220916509629
+ },
+ {
+  "emotion": "surprised",
+  "valence": 0.16048731894493107,
+  "arousal": 0.5300445535182954
+ },
+ {
+  "emotion": "surprised",
+  "valence": -0.2528743071556091,
+  "arousal": 0.7225418577194215
+ },
+ {
+  "emotion": "surprised",
+  "valence": -0.2715898205280304,
+  "arousal": 0.7018983563899994
+ },
+ {
+  "emotion": "surprised",
+  "valence": -0.16124431886672974,
+  "arousal": 0.6628573770046234
+ },
+ {
+  "emotion": "surprised",
+  "valence": 0.002306651115417502,
+  "arousal": 0.5732039043426513
+ }
+]
