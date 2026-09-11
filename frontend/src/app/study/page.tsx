@@ -21,10 +21,13 @@ export default function StudyPage() {
   const [open, setOpen] = useState(true);
   const [done, setDone] = useState(false);
 
+  // Dark like the dialog it hosts, in hard-coded colours, and for the same
+  // reason: this page exists to collect perceptual data that is compared
+  // across participants. See CalibrationTest.
   return (
     <main className="flex min-h-screen flex-col items-center justify-center bg-black px-6 text-center">
       <h1 className="text-xl font-semibold text-white">SoundShape</h1>
-      <p className="mt-2 max-w-sm text-sm leading-relaxed text-white/50">
+      <p className="mt-2 max-w-sm text-sm leading-relaxed text-white/70">
         소리를 색·모양·움직임으로 바꿔 보여주는 자막을 만들고 있습니다.
         <br />
         그 표현이 사람들에게 어떻게 보이는지 알아보는 짧은 검사입니다.
@@ -38,7 +41,7 @@ export default function StudyPage() {
         <button
           type="button"
           onClick={() => setOpen(true)}
-          className="mt-8 h-11 rounded-full bg-white px-8 text-sm font-medium text-black"
+          className="mt-8 h-11 rounded-full bg-white px-8 text-sm font-medium text-black transition hover:bg-white/90"
         >
           검사 시작하기
         </button>

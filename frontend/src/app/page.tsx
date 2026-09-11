@@ -1,16 +1,34 @@
 "use client";
 
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import {
+  useCallback,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+  useSyncExternalStore,
+} from "react";
 import { ControlPanel } from "@/components/ControlPanel";
 import { EmotionCanvas } from "@/components/EmotionCanvas";
 import { EmotionTimeline } from "@/components/EmotionTimeline";
 import { FileUpload } from "@/components/FileUpload";
+import { CalibrationCard } from "@/components/CalibrationCard";
+import { ConfidenceBar } from "@/components/ConfidenceBar";
 import { CalibrationTest } from "@/components/CalibrationTest";
 import { Legend } from "@/components/Legend";
 import { Player } from "@/components/Player";
 import { SubtitleLayer } from "@/components/SubtitleLayer";
+import { SourceRow } from "@/components/SourceRow";
+import { Eyebrow, SourceDot, SrOnly } from "@/components/ui";
+import { emotionName, shapeName, useLocale, useT } from "@/lib/i18n";
+import {
+  hasUploaded,
+  hasUploadedOnServer,
+  markUploaded,
+  subscribeUploaded,
+} from "@/lib/uploadMemory";
 import { processFileStream } from "@/lib/api";
-import { loadWeights } from "@/lib/calibrationStore";
+import { clearWeights, loadWeights } from "@/lib/calibrationStore";
 import {
   DEFAULT_RENDER_MODE,
   mapEmotionToVisual,
@@ -18,6 +36,7 @@ import {
   type RenderMode,
 } from "@/lib/mapping";
 import {
+  DEMO_PROSODY_IS_SYNTHETIC,
   DEMO_TIMELINE,
   DEMO_TIMELINE_DURATION,
   getCurrentFrame,
@@ -42,7 +61,7 @@ interface Source {
 }
 
 const DEMO_SOURCE: Source = {
-  label: "Demo · the “괜찮아” four-tone scene",
+  label: "__demo__",
   timeline: DEMO_TIMELINE,
   totalDuration: DEMO_TIMELINE_DURATION,
 };
@@ -53,6 +72,8 @@ const PAUSE_MARGIN = 0.25; // pause if the playhead gets this close to the ready
 const RESUME_MARGIN = 1.0; // resume once the horizon is this far ahead again
 
 export default function Home() {
+  const t = useT();
+  const locale = useLocale();
   const [source, setSource] = useState<Source>(DEMO_SOURCE);
   const [currentTime, setCurrentTime] = useState(0);
   const [isPlaying, setIsPlaying] = useState(true);
@@ -69,6 +90,14 @@ export default function Home() {
   // backend ships is the default seen here.
   const [renderMode, setRenderMode] = useState<RenderMode>(DEFAULT_RENDER_MODE);
   const [calibrating, setCalibrating] = useState(false);
+  // The dropzone is onboarding, not furniture: it holds the rail until the
+  // viewer has picked a file once, after which the compact SourceRow with its
+  // "다른 파일" button takes over. See lib/uploadMemory.
+  const hasEverUploaded = useSyncExternalStore(
+    subscribeUploaded,
+    hasUploaded,
+    hasUploadedOnServer,
+  );
   // Read after mount, never during render — localStorage does not exist on the
   // server and reading it while rendering would mismatch the hydrated markup.
   const [weights, setWeights] = useState<ChannelWeights | null>(null);
@@ -222,21 +251,65 @@ export default function Home() {
   }, [hasMedia]);
 
   const seek = useCallback(
-    (t: number) => {
+    // Named `time` rather than `t`, which is now the string table.
+    (time: number) => {
       if (hasMedia) {
         const el = mediaRef.current;
-        if (el) el.currentTime = Math.max(0, Math.min(t, el.duration || t));
+        if (el) el.currentTime = Math.max(0, Math.min(time, el.duration || time));
       } else {
-        setCurrentTime(Math.max(0, Math.min(t, source.totalDuration)));
+        setCurrentTime(Math.max(0, Math.min(time, source.totalDuration)));
       }
     },
     [hasMedia, source.totalDuration],
   );
 
+  // Transport from the keyboard. Presenting this live means driving it while
+  // talking, and hunting for a button mid-sentence is the part that looks
+  // unrehearsed; it also gives the page a play control that does not require
+  // a mouse. Skipped whenever focus is in a text field — the script box is
+  // full of spaces — and whenever the timeline slider has focus, which owns
+  // the arrow keys itself.
+  useEffect(() => {
+    const onKey = (e: KeyboardEvent) => {
+      // `instanceof` rather than a cast: the target is an Element for every
+      // real keypress, but not for a synthetic event dispatched on window, and
+      // getAttribute on that throws straight out of the listener.
+      const el = e.target instanceof HTMLElement ? e.target : null;
+      const tag = el?.tagName;
+      if (
+        tag === "INPUT" ||
+        tag === "TEXTAREA" ||
+        el?.isContentEditable ||
+        el?.getAttribute("role") === "slider"
+      ) {
+        return;
+      }
+      if (e.metaKey || e.ctrlKey || e.altKey) return;
+
+      if (e.code === "Space" || e.key === "k") {
+        e.preventDefault();
+        togglePlay();
+      } else if (e.key === "ArrowRight") {
+        e.preventDefault();
+        seek(currentTime + (e.shiftKey ? 5 : 1));
+      } else if (e.key === "ArrowLeft") {
+        e.preventDefault();
+        seek(currentTime - (e.shiftKey ? 5 : 1));
+      }
+    };
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+  }, [togglePlay, seek, currentTime]);
+
   const handleFile = useCallback(async (file: File) => {
     if (prevUrlRef.current) URL.revokeObjectURL(prevUrlRef.current);
     const url = URL.createObjectURL(file);
     prevUrlRef.current = url;
+
+    // Onboarding is over the moment a file is picked, whether or not the
+    // processing that follows succeeds — the viewer has demonstrably found the
+    // control, so the dropzone has done its job.
+    markUploaded();
 
     streamRef.current = { horizon: 0, done: false };
     bufferingRef.current = false;
@@ -250,7 +323,7 @@ export default function Home() {
     setCurrentTime(0);
     setIsPlaying(false);
     setSource({
-      label: `Uploaded · ${file.name}`,
+      label: file.name,
       timeline: [],
       totalDuration: 0,
       mediaUrl: url,
@@ -411,6 +484,9 @@ export default function Home() {
 
 
   const isDemo = source === DEMO_SOURCE;
+  // Shown only while the viewer has never picked a file AND the built-in demo
+  // is still what is playing — once either is false the rail shows SourceRow.
+  const showDropzone = isDemo && !hasEverUploaded;
   const isVideo = source.mediaKind === "video";
   const showPrebufferOverlay = isProcessing && !prebufferReady;
   const processedPct =
@@ -419,302 +495,413 @@ export default function Home() {
       : 0;
 
   return (
-    <div className="flex min-h-screen flex-col items-center bg-gradient-to-b from-zinc-900 via-zinc-950 to-black px-4 py-10 text-white">
-      <header className="mb-6 w-full max-w-3xl">
-        <h1 className="text-2xl font-semibold tracking-tight">SoundShape</h1>
-        <p className="text-sm text-white/50">
-          Captions tell you <em>what</em> was said. SoundShape shows you{" "}
-          <em>how</em>.
-        </p>
+    <div className="mx-auto w-full max-w-[1180px] flex-1 px-8 py-9">
+      <header className="flex flex-wrap items-start justify-between gap-x-8 gap-y-5">
+        <div>
+          <h1 className="text-[32px] font-semibold leading-none tracking-[-0.02em]">
+            SoundShape
+          </h1>
+          <p className="mt-3 max-w-md text-[14px] leading-relaxed text-muted">
+            {t.tagline.lead}
+            <b className="font-semibold text-ink">{t.tagline.what}</b>
+            {t.tagline.mid}
+            <b className="font-semibold text-ink">{t.tagline.how}</b>
+            {t.tagline.tail}
+          </p>
+        </div>
+        {/* Controls live in the masthead rather than under the stage: they are
+            about how to READ the thing below, so they belong above it. */}
+        <div className="pt-1">
+          <ControlPanel
+            showSoundShape={showSoundShape}
+            onToggleSoundShape={() => setShowSoundShape((v) => !v)}
+            showCaptions={showCaptions}
+            onToggleCaptions={() => setShowCaptions((v) => !v)}
+            showLegend={showLegend}
+            onToggleLegend={() => setShowLegend((v) => !v)}
+            renderMode={renderMode}
+            renderModeAvailable={currentFrame?.prosody != null}
+            onToggleRenderMode={() =>
+              setRenderMode((m) => (m === "hybrid" ? "full_ai" : "hybrid"))
+            }
+            showDetails={showDetails}
+            onToggleDetails={() => setShowDetails((v) => !v)}
+          />
+        </div>
       </header>
 
-      <main className="flex w-full max-w-3xl flex-1 flex-col gap-6">
-        {isDemo ? (
-          <FileUpload onFile={handleFile} disabled={isProcessing} />
-        ) : (
-          <div className="flex items-center justify-between rounded-xl border border-white/10 bg-white/[0.04] px-4 py-3 text-sm">
-            <div className="flex min-w-0 items-center gap-3 text-white/80">
-              <span
-                className={[
-                  "inline-block h-2 w-2 shrink-0 rounded-full",
-                  streamDone ? "bg-emerald-400" : "animate-pulse bg-amber-400",
-                ].join(" ")}
-              />
-              <span className="truncate">
-                {source.label}
-                {source.language ? (
-                  <span className="ml-2 text-white/40">({source.language})</span>
-                ) : null}
-                {!streamDone && (
-                  <span className="ml-2 text-white/40">
-                    · analyzing {processedPct.toFixed(0)}%
-                  </span>
-                )}
-              </span>
-            </div>
-            <button
-              type="button"
-              onClick={backToDemo}
-              className="shrink-0 rounded-full border border-white/20 px-3 py-1 text-xs text-white/80 hover:bg-white/10"
+      <div className="mt-8 grid grid-cols-1 gap-x-10 gap-y-8 lg:grid-cols-12">
+        {/* ── Stage column ── */}
+        <main className="lg:col-span-8">
+          {processingError && (
+            <div
+              className="mb-4 rounded-lg px-4 py-3 text-[12px]"
+              style={{
+                background: "var(--danger-tint)",
+                border: "1px solid var(--danger)",
+                color: "var(--danger)",
+              }}
             >
-              ← demo
-            </button>
-          </div>
-        )}
-
-        {isDemo && (
-          <details className="rounded-xl border border-white/10 bg-white/[0.03] px-4 py-3 text-sm">
-            <summary className="cursor-pointer select-none text-white/70">
-              ✎ 내 스크립트로 재생 (.srt) — 모델 해석 대신 내가 정한 자막·감정으로
-            </summary>
-            <div className="mt-4 space-y-4">
-              <div>
-                <label className="mb-1 block text-xs text-white/50">
-                  1. 영상/오디오 파일
-                </label>
-                <input
-                  type="file"
-                  accept="audio/*,video/*"
-                  onChange={(e) => setScriptFile(e.target.files?.[0] ?? null)}
-                  className="block w-full text-xs text-white/70 file:mr-3 file:rounded-full file:border-0 file:bg-white/10 file:px-3 file:py-1 file:text-white/80"
-                />
-                {scriptFile && (
-                  <div className="mt-1 truncate text-xs text-white/40">
-                    {scriptFile.name}
-                  </div>
-                )}
+              <div className="font-medium">{t.errors.failed}</div>
+              <div className="mt-1">{processingError}</div>
+              <div className="mt-2 text-[11px] text-muted">
+                {t.errors.backendHint}{" "}
+                <code className="tnum rounded bg-well px-1">
+                  uvicorn backend.api.main:app --port 8000
+                </code>
               </div>
-              <div>
-                <label className="mb-1 block text-xs text-white/50">
-                  2. 스크립트 (.srt · 각 줄 앞에 [비꼼]/[진심]/[분노] 등 태그 가능)
-                </label>
-                <input
-                  type="file"
-                  accept=".srt,text/plain"
-                  onChange={(e) => {
-                    const f = e.target.files?.[0];
-                    if (f) f.text().then(setScriptSrt);
-                  }}
-                  className="mb-2 block w-full text-xs text-white/70 file:mr-3 file:rounded-full file:border-0 file:bg-white/10 file:px-3 file:py-1 file:text-white/80"
-                />
-                <textarea
-                  value={scriptSrt}
-                  onChange={(e) => setScriptSrt(e.target.value)}
-                  rows={6}
-                  placeholder={
-                    "1\n00:00:00,300 --> 00:00:02,600\n[비꼼] And so what? You convince me,\n\n2\n00:00:02,600 --> 00:00:05,000\n[비꼼] maybe tonight we just sneak in and shampoo her carpet."
-                  }
-                  className="w-full rounded-lg border border-white/10 bg-black/40 p-2 font-mono text-xs leading-relaxed text-white/80 placeholder:text-white/25"
-                />
-                <div className="mt-1 text-xs text-white/35">
-                  태그: 비꼼·진심·위로·분노·짜증·슬픔·체념·놀람·기쁨·공포·중립
+            </div>
+          )}
+
+          {/* The stage. Light ground: the field writes non-premultiplied alpha
+              with lightness capped well short of white, so it composites onto
+              paper as coloured ink. The renderer itself is untouched. */}
+          {/* 16:9 only when there is actually a picture in it. With audio the
+              frame held a thin waveform in the middle of a large empty
+              rectangle — the biggest element on the page was also the emptiest,
+              which is most of what made the app read as unfinished. A 21:9 band
+              is the shape of the thing being shown. */}
+          <section
+            className="relative overflow-hidden rounded-lg"
+            style={{
+              background: "var(--well)",
+              aspectRatio: isVideo ? "16 / 9" : "21 / 9",
+            }}
+          >
+            {/* The emotion field is the entire product and, until now, the one
+                thing on the page with no text equivalent — a bare <canvas>
+                with no role and no label. The live region says what the field
+                is currently showing, so the information it carries exists in
+                text as well as in light. Keyed to the segment rather than the
+                frame so it announces once per reading, not sixty times a
+                second. */}
+            <SrOnly live="polite">
+              {currentFrame
+                ? t.stage.nowPlaying(
+                    emotionName(currentFrame.emotion.category, locale),
+                    shapeName(visual.shape, locale),
+                  )
+                : ""}
+            </SrOnly>
+            {hasMedia && isVideo && (
+              <video
+                ref={(el) => {
+                  mediaRef.current = el;
+                }}
+                src={source.mediaUrl}
+                className="absolute inset-0 h-full w-full object-contain"
+                playsInline
+              />
+            )}
+            {hasMedia && !isVideo && (
+              <audio
+                ref={(el) => {
+                  mediaRef.current = el;
+                }}
+                src={source.mediaUrl}
+              />
+            )}
+
+            {/* The calibration test needs its own WebGL contexts and this one
+                is behind a full-screen dialog anyway. Releasing it while the
+                test runs keeps the stimuli on the real renderer instead of the
+                shape-less 2D fallback. */}
+            {showSoundShape && !calibrating && (
+              <div
+                className="pointer-events-none absolute inset-x-0"
+                style={
+                  isVideo
+                    ? { bottom: "24%", height: "36%" }
+                    : { bottom: "30%", height: "44%" }
+                }
+              >
+                <div
+                  role="img"
+                  aria-label={t.stage.fieldLabel(
+                    currentFrame
+                      ? emotionName(currentFrame.emotion.category, locale)
+                      : "",
+                  )}
+                  className="h-full w-full"
+                >
+                  <EmotionCanvas
+                    visual={fieldVisual}
+                    changedAt={currentFrame?.t ?? 0}
+                    transparent
+                  />
                 </div>
               </div>
-              <button
-                type="button"
-                disabled={!scriptFile || !scriptSrt.trim()}
-                onClick={() => scriptFile && handleScript(scriptFile, scriptSrt)}
-                className="rounded-full bg-white px-4 py-1.5 text-xs font-medium text-black transition hover:bg-white/90 disabled:cursor-not-allowed disabled:opacity-40"
-              >
-                ▶ 내 스크립트로 재생
-              </button>
-            </div>
-          </details>
-        )}
+            )}
 
-        {processingError && (
-          <div className="rounded-xl border border-red-500/30 bg-red-500/10 px-4 py-3 text-sm text-red-200">
-            <div className="font-medium">Processing failed</div>
-            <div className="mt-1 text-red-200/80">{processingError}</div>
-            <div className="mt-2 text-xs text-red-200/60">
-              Hint: is the backend running? (
-              <code className="rounded bg-black/40 px-1">
-                uvicorn backend.api.main:app --port 8000
-              </code>
-              )
-            </div>
-          </div>
-        )}
-
-        {/* Stage */}
-        <section className="relative aspect-video w-full overflow-hidden rounded-2xl bg-black shadow-2xl">
-          {hasMedia && isVideo && (
-            <video
-              ref={(el) => {
-                mediaRef.current = el;
-              }}
-              src={source.mediaUrl}
-              className="absolute inset-0 h-full w-full object-contain"
-              playsInline
-            />
-          )}
-          {hasMedia && !isVideo && (
-            <audio
-              ref={(el) => {
-                mediaRef.current = el;
-              }}
-              src={source.mediaUrl}
-            />
-          )}
-
-          {/* The calibration test needs its own WebGL contexts and this one
-              is behind a full-screen dialog anyway. Releasing it while the
-              test runs keeps the stimuli on the real renderer instead of the
-              shape-less 2D fallback. */}
-          {showSoundShape &&
-            !calibrating &&
-            (isVideo ? (
-              <div className="pointer-events-none absolute inset-x-0 bottom-[15%] h-[36%] opacity-95">
-                <EmotionCanvas
-                  visual={fieldVisual}
-                  changedAt={currentFrame?.t ?? 0}
-                  transparent
-                />
-              </div>
-            ) : (
-              // The wave draws down the middle of its own canvas, so the
-              // canvas is a band rather than the whole frame: centred at ~33%
-              // from the bottom, which sits it just above the caption line at
-              // 13% instead of splitting the picture in half.
-              <div className="pointer-events-none absolute inset-x-0 bottom-[15%] h-[36%]">
-                {/* Transparent, like the video overlay. The canvas used to fill
-                    the frame, so its own tinted background went unnoticed; as a
-                    band it would draw a visible rectangle against the player. */}
-                <EmotionCanvas
-                  visual={fieldVisual}
-                  changedAt={currentFrame?.t ?? 0}
-                  transparent
-                />
-              </div>
-            ))}
-
-          {/* Initial prebuffer overlay */}
-          {showPrebufferOverlay && (
-            <div className="absolute inset-0 flex flex-col items-center justify-center gap-3 bg-black/70 backdrop-blur-sm">
+            {showPrebufferOverlay && (
               <div
-                className="h-8 w-8 animate-spin rounded-full border-2 border-white/20 border-t-white"
-                aria-label="loading"
-              />
-              <p className="text-sm text-white/80">
-                Analyzing the opening… {(elapsedMs / 1000).toFixed(1)} s
-              </p>
-              <p className="text-xs text-white/40">
-                FFmpeg → Whisper → PRAAT → wav2vec2 — then playback starts
-              </p>
-            </div>
-          )}
-
-          {/* Mid-playback buffering nudge */}
-          {buffering && !showPrebufferOverlay && (
-            <div className="absolute right-3 top-3 flex items-center gap-2 rounded-full bg-black/60 px-3 py-1 text-xs text-white/80 backdrop-blur-sm">
-              <span className="h-3 w-3 animate-spin rounded-full border-2 border-white/30 border-t-white" />
-              buffering…
-            </div>
-          )}
-
-          {showCaptions && (
-            <div className="pointer-events-none absolute inset-x-0 bottom-[13%] flex justify-center px-6">
-              <SubtitleLayer frame={currentFrame} currentTime={currentTime} />
-            </div>
-          )}
-        </section>
-
-        <ControlPanel
-          showSoundShape={showSoundShape}
-          onToggleSoundShape={() => setShowSoundShape((v) => !v)}
-          showCaptions={showCaptions}
-          onToggleCaptions={() => setShowCaptions((v) => !v)}
-          showLegend={showLegend}
-          onToggleLegend={() => setShowLegend((v) => !v)}
-          renderMode={renderMode}
-          renderModeAvailable={currentFrame?.prosody != null}
-          onToggleRenderMode={() =>
-            setRenderMode((m) => (m === "hybrid" ? "full_ai" : "hybrid"))
-          }
-          showDetails={showDetails}
-          onToggleDetails={() => setShowDetails((v) => !v)}
-        />
-
-        {showLegend && <Legend />}
-
-        <button
-          type="button"
-          onClick={() => setCalibrating(true)}
-          className="self-start text-xs text-white/35 underline-offset-4 transition hover:text-white/70 hover:underline"
-        >
-          시각 표현 맞춤 설정 (약 2분 30초)
-        </button>
-
-        {calibrating && (
-          <CalibrationTest
-            onClose={() => {
-              setCalibrating(false);
-              setWeights(loadWeights()); // pick up a result just produced
-            }}
-          />
-        )}
-
-        <section className="space-y-2">
-          <div className="flex items-center justify-between text-xs text-white/40">
-            <span>Emotion timeline</span>
-            <span>color = mapped HSL · width = duration</span>
-          </div>
-          <EmotionTimeline
-            timeline={source.timeline}
-            totalDuration={source.totalDuration || DEMO_TIMELINE_DURATION}
-            currentTime={currentTime}
-            onSeek={seek}
-          />
-        </section>
-
-        <Player
-          isPlaying={isPlaying}
-          currentTime={currentTime}
-          totalDuration={source.totalDuration || DEMO_TIMELINE_DURATION}
-          onTogglePlay={togglePlay}
-          onRestart={restart}
-        />
-
-        {currentFrame && showDetails && (
-          <section className="rounded-xl border border-white/10 bg-white/[0.03] p-4 text-xs text-white/60">
-            <div className="grid grid-cols-2 gap-x-6 gap-y-2 sm:grid-cols-4">
-              <Field label="Category" value={currentFrame.emotion.category} />
-              <Field
-                label="Valence"
-                value={currentFrame.emotion.valence.toFixed(2)}
-              />
-              <Field
-                label="Arousal"
-                value={currentFrame.emotion.arousal.toFixed(2)}
-              />
-              <Field label="Shape" value={visual.shape} />
-            </div>
-            {currentFrame.prosody && (
-              <div className="mt-3 grid grid-cols-2 gap-x-6 gap-y-2 border-t border-white/5 pt-3 sm:grid-cols-4">
-                <Field
-                  label="F0 mean"
-                  value={`${currentFrame.prosody.f0_mean.toFixed(0)} Hz`}
+                className="absolute inset-0 flex flex-col items-center justify-center gap-3"
+                style={{ background: "color-mix(in srgb, var(--well) 88%, transparent)" }}
+              >
+                <div
+                  className="h-7 w-7 animate-spin rounded-full border-2"
+                  style={{
+                    borderColor: "var(--line-strong)",
+                    borderTopColor: "var(--accent)",
+                  }}
+                  aria-label="분석 중"
                 />
-                <Field
-                  label="F0 range"
-                  value={`${currentFrame.prosody.f0_range.toFixed(0)} Hz`}
+                <p className="tnum text-[12px] text-muted">
+                  {t.stage.analyzingHead((elapsedMs / 1000).toFixed(1))}
+                </p>
+                <p className="eyebrow">{t.stage.pipeline}</p>
+              </div>
+            )}
+
+            {buffering && !showPrebufferOverlay && (
+              <div
+                className="absolute right-3 top-3 flex items-center gap-2 rounded-full px-3 py-1 text-[11px] text-muted"
+                style={{ background: "var(--raised)", border: "1px solid var(--line)" }}
+              >
+                <span
+                  className="h-3 w-3 animate-spin rounded-full border-2"
+                  style={{
+                    borderColor: "var(--line-strong)",
+                    borderTopColor: "var(--accent)",
+                  }}
                 />
-                <Field
-                  label="Intensity"
-                  value={currentFrame.prosody.intensity_mean.toFixed(1)}
-                />
-                <Field
-                  label="Jitter"
-                  value={currentFrame.prosody.jitter_local.toFixed(3)}
-                />
+                {t.stage.buffering}
+              </div>
+            )}
+
+            {showCaptions && (
+              <div
+                className="pointer-events-none absolute inset-x-0 flex justify-center px-6"
+                style={{ bottom: isVideo ? "8%" : "10%" }}
+              >
+                <SubtitleLayer frame={currentFrame} currentTime={currentTime} />
               </div>
             )}
           </section>
-        )}
-      </main>
 
-      <footer className="mt-10 text-xs text-white/30">
-        SoundShape · KCF 2026 · streaming (prebuffer + lookahead)
+          <div className="mt-6 flex flex-wrap items-center justify-between gap-4">
+            <Player
+              isPlaying={isPlaying}
+              currentTime={currentTime}
+              totalDuration={source.totalDuration || DEMO_TIMELINE_DURATION}
+              onTogglePlay={togglePlay}
+              onRestart={restart}
+            />
+            <span className="tnum hidden text-[10px] text-faint sm:block">
+              {t.keys.help}
+            </span>
+          </div>
+
+          <section className="mt-7">
+            <div className="mb-2.5 flex items-baseline justify-between">
+              <Eyebrow>{t.sections.timeline}</Eyebrow>
+              <span className="text-[10px] text-faint">
+                {t.sections.timelineNote}
+              </span>
+            </div>
+            <EmotionTimeline
+              timeline={source.timeline}
+              totalDuration={source.totalDuration || DEMO_TIMELINE_DURATION}
+              currentTime={currentTime}
+              onSeek={seek}
+            />
+          </section>
+
+          <div className="mt-8">
+            <CalibrationCard
+              weights={weights}
+              onStart={() => setCalibrating(true)}
+              onReset={() => {
+                clearWeights();
+                setWeights(null);
+              }}
+            />
+          </div>
+
+          {isDemo && (
+            <details className="mt-7 border-t border-line pt-4 text-[12px]">
+              <summary className="cursor-pointer select-none text-muted transition hover:text-ink">
+                {t.script.summary}
+              </summary>
+              <div className="mt-4 space-y-4">
+                <div>
+                  <Eyebrow className="mb-1.5">{t.script.step1}</Eyebrow>
+                  <input
+                    type="file"
+                    accept="audio/*,video/*"
+                    onChange={(e) => setScriptFile(e.target.files?.[0] ?? null)}
+                    className="block w-full text-[11px] text-muted file:mr-3 file:rounded-full file:border file:border-line file:bg-transparent file:px-3 file:py-1 file:text-[11px] file:text-ink"
+                  />
+                  {scriptFile && (
+                    <div className="mt-1 truncate text-[11px] text-faint">
+                      {scriptFile.name}
+                    </div>
+                  )}
+                </div>
+                <div>
+                  <Eyebrow className="mb-1.5">{t.script.step2}</Eyebrow>
+                  <input
+                    type="file"
+                    accept=".srt,text/plain"
+                    onChange={(e) => {
+                      const f = e.target.files?.[0];
+                      if (f) f.text().then(setScriptSrt);
+                    }}
+                    className="mb-2 block w-full text-[11px] text-muted file:mr-3 file:rounded-full file:border file:border-line file:bg-transparent file:px-3 file:py-1 file:text-[11px] file:text-ink"
+                  />
+                  <textarea
+                    value={scriptSrt}
+                    onChange={(e) => setScriptSrt(e.target.value)}
+                    rows={6}
+                    placeholder={
+                      "1\n00:00:00,300 --> 00:00:02,600\n[비꼼] And so what? You convince me,"
+                    }
+                    className="tnum w-full rounded border border-line bg-raised p-2 text-[11px] leading-relaxed text-ink placeholder:text-faint"
+                  />
+                  <div className="mt-1 text-[10px] text-faint">
+                    {t.script.tags}
+                  </div>
+                </div>
+                <button
+                  type="button"
+                  disabled={!scriptFile || !scriptSrt.trim()}
+                  onClick={() => scriptFile && handleScript(scriptFile, scriptSrt)}
+                  className="rounded-full bg-ink px-4 py-1.5 text-[11px] font-medium text-white transition hover:opacity-90 disabled:cursor-not-allowed disabled:opacity-40"
+                >
+                  {t.script.play}
+                </button>
+              </div>
+            </details>
+          )}
+        </main>
+
+        {/* ── Right rail. Rules, not boxes. ── */}
+        <aside className="space-y-8 lg:col-span-4">
+          <section>
+            <Eyebrow className="mb-2.5">{t.sections.source}</Eyebrow>
+            {showDropzone ? (
+              <FileUpload onFile={handleFile} disabled={isProcessing} />
+            ) : (
+              <SourceRow
+                label={isDemo ? t.demo.sourceLabel : source.label}
+                detail={
+                  [
+                    t.upload.seconds(
+                      (source.totalDuration || DEMO_TIMELINE_DURATION).toFixed(1),
+                    ),
+                    source.language ?? (isDemo ? (locale === "ko" ? "한국어" : "Korean") : undefined),
+                  ]
+                    .filter(Boolean)
+                    .join(" · ")
+                }
+                progressPct={hasMedia && !streamDone ? processedPct : null}
+                onFile={handleFile}
+                onBackToDemo={isDemo ? undefined : backToDemo}
+                disabled={isProcessing}
+              />
+            )}
+          </section>
+
+          {showDetails && currentFrame && (
+            <section>
+              <Eyebrow className="mb-2.5">{t.sections.readout}</Eyebrow>
+
+              {/* Grouped by SOURCE rather than listed flat. The eight rows used
+                  to be one undifferentiated table with a coloured dot on each,
+                  so the project's central distinction — what was measured off
+                  the voice versus what a classifier guessed — had to be
+                  reassembled by the reader from eight small dots. As two
+                  labelled groups it is the first thing the panel says. The
+                  per-row dots go away with it: the heading carries the meaning
+                  once instead of eight times. */}
+              <SourceGroup label={t.readout.inferred} source="inferred">
+                <Row
+                  label={t.readout.emotion}
+                  value={emotionName(currentFrame.emotion.category, locale)}
+                />
+                <Row
+                  label={t.readout.valence}
+                  value={currentFrame.emotion.valence.toFixed(2)}
+                  numeric
+                />
+                <Row
+                  label={t.readout.arousal}
+                  value={currentFrame.emotion.arousal.toFixed(2)}
+                  numeric
+                />
+                <Row label={t.readout.shape} value={shapeName(visual.shape, locale)} />
+                {currentFrame.emotion.confidence != null && (
+                  <ConfidenceBar confidence={currentFrame.emotion.confidence} />
+                )}
+              </SourceGroup>
+
+              {currentFrame.prosody && (
+                <div className="mt-5">
+                  <SourceGroup label={t.readout.measured} source="measured">
+                    {/* Ordered by the config's own fitted weights — F0 mean
+                        .40, intensity .25, F0 range .20, jitter last — so the
+                        column still ranks them even though they now share a
+                        size. */}
+                    <Row
+                      label={t.readout.f0mean}
+                      value={`${currentFrame.prosody.f0_mean.toFixed(0)} Hz`}
+                      numeric
+                    />
+                    <Row
+                      label={t.readout.intensity}
+                      value={`${currentFrame.prosody.intensity_mean.toFixed(1)} dB`}
+                      numeric
+                    />
+                    <Row
+                      label={t.readout.f0range}
+                      value={`${currentFrame.prosody.f0_range.toFixed(0)} Hz`}
+                      numeric
+                    />
+                    <Row
+                      label={t.readout.jitter}
+                      value={currentFrame.prosody.jitter_local.toFixed(3)}
+                      numeric
+                    />
+                  </SourceGroup>
+                </div>
+              )}
+
+              {/* The demo scene has no recording behind it, so its prosody is
+                  illustrative. Saying so is not a weakness to hide: a judge who
+                  finds an unlabelled number that was never measured stops
+                  believing the measured ones too. */}
+              {isDemo && DEMO_PROSODY_IS_SYNTHETIC && currentFrame.prosody && (
+                <p className="mt-2.5 text-[11px] leading-relaxed text-faint">
+                  {t.readout.syntheticNote}
+                </p>
+              )}
+            </section>
+          )}
+
+          {showLegend && (
+            <section>
+              <Eyebrow className="mb-2.5">{t.sections.legendTitle}</Eyebrow>
+              <p className="mb-3 text-[11px] leading-relaxed text-faint">
+                {t.sections.legendNote}
+              </p>
+              <Legend />
+            </section>
+          )}
+
+        </aside>
+      </div>
+
+      {calibrating && (
+        <CalibrationTest
+          onClose={() => {
+            setCalibrating(false);
+            setWeights(loadWeights()); // pick up a result just produced
+          }}
+        />
+      )}
+
+      <footer className="mt-12 border-t border-line pt-4">
+        <Eyebrow>{t.footer}</Eyebrow>
       </footer>
 
       {activePrompt && fbConfig && (
@@ -736,12 +923,57 @@ export default function Home() {
   );
 }
 
-function Field({ label, value }: { label: string; value: string }) {
+/** A labelled block of rows that all came from the same place. */
+function SourceGroup({
+  label,
+  source,
+  children,
+}: {
+  label: string;
+  source: "measured" | "inferred";
+  children: React.ReactNode;
+}) {
   return (
     <div>
-      <span className="text-white/40">{label}</span>
-      <br />
-      <span className="text-white">{value}</span>
+      <div className="mb-1 flex items-center gap-2">
+        <SourceDot source={source} />
+        <span className="eyebrow">{label}</span>
+      </div>
+      <dl>{children}</dl>
+    </div>
+  );
+}
+
+/**
+ * One readout line.
+ *
+ * `numeric` sets every measured or scored value at the same display size —
+ * this is a readout, and a readout's job is to let you read the numbers from
+ * a step back. Labels stay small and quiet so the column reads as values with
+ * annotations rather than as a table of equal-weight cells. The two rows whose
+ * values are words (category, shape) keep body size: blown up to 20px they
+ * wrap and out-shout the measurements, and they are the two things the
+ * classifier GUESSED, so they are the last things that should shout.
+ */
+function Row({
+  label,
+  value,
+  numeric,
+}: {
+  label: string;
+  value: string;
+  numeric?: boolean;
+}) {
+  return (
+    <div className="flex items-baseline justify-between gap-3 border-b border-line py-[7px]">
+      <dt className="text-[12px] text-muted">{label}</dt>
+      <dd
+        className={
+          numeric ? "tnum text-[20px] leading-none" : "tnum text-[13px]"
+        }
+      >
+        {value}
+      </dd>
     </div>
   );
 }

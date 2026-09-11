@@ -409,7 +409,7 @@ function noopHandle(): EmotionFieldHandle {
 // says jagged forms read as threatening and round ones as warm (Aronoff et al.
 // 1992; Bar & Neta 2006) is about contour sharpness, which is exactly what a
 // peak's steepness is.
-const SHARPNESS_BY_SHAPE: Record<string, number> = {
+export const SHARPNESS_BY_SHAPE: Record<string, number> = {
   jagged_star: 1.0,        // anger, sarcasm
   trembling_spikes: 0.92,  // fear
   expanding_burst: 0.55,   // joy, surprise

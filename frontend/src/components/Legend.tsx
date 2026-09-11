@@ -1,75 +1,66 @@
 "use client";
 
+import { emotionName, useLocale, useT } from "@/lib/i18n";
 import { mapEmotionToVisual } from "@/lib/mapping";
-import type { Emotion } from "@/types/emotion";
+import { CHIP_GLYPH, waveGlyphPath } from "@/lib/waveGlyph";
+import type { Emotion, EmotionCategory } from "@/types/emotion";
 
-interface Item {
-  emotion: Emotion;
-  label: string;
-  note: string;
-}
+// The legend's job is to teach the visual language, so it has to show the
+// language the renderer actually speaks. It used to show six glossy spheres in
+// six hues, which taught colour and quietly implied that shape did nothing —
+// the opposite of the claim the project is built on. Each row draws the real
+// waveform silhouette for that emotion, generated from the renderer's own
+// constants (waveGlyph.ts), so what a viewer learns here is what they will see
+// on the stage.
 
-const ITEMS: Item[] = [
-  {
-    emotion: { category: "anger", valence: -0.7, arousal: 0.8 },
-    label: "Anger",
-    note: "violent · crimson · turbulent",
-  },
-  {
-    emotion: { category: "joy", valence: 0.7, arousal: 0.6 },
-    label: "Joy",
-    note: "radiant · warm · blooming",
-  },
-  {
-    emotion: { category: "sadness", valence: -0.6, arousal: -0.4 },
-    label: "Sadness",
-    note: "calm · blue · slow diffusion",
-  },
-  {
-    emotion: { category: "fear", valence: -0.5, arousal: 0.5 },
-    label: "Fear",
-    note: "unstable · violet · trembling",
-  },
-  {
-    emotion: { category: "sincerity", valence: 0.3, arousal: -0.1 },
-    label: "Sincerity",
-    note: "soft · warm · gentle",
-  },
-  {
-    emotion: { category: "neutral", valence: 0, arousal: 0 },
-    label: "Neutral",
-    note: "still · grey · even",
-  },
+type LegendKey = "anger" | "joy" | "sadness" | "fear" | "sincerity" | "neutral";
+
+const ITEMS: { key: LegendKey; emotion: Emotion }[] = [
+  { key: "anger", emotion: { category: "anger", valence: -0.7, arousal: 0.8 } },
+  { key: "joy", emotion: { category: "joy", valence: 0.7, arousal: 0.6 } },
+  { key: "sadness", emotion: { category: "sadness", valence: -0.6, arousal: -0.4 } },
+  { key: "fear", emotion: { category: "fear", valence: -0.5, arousal: 0.5 } },
+  { key: "sincerity", emotion: { category: "sincerity", valence: 0.3, arousal: -0.1 } },
+  { key: "neutral", emotion: { category: "neutral", valence: 0, arousal: 0 } },
 ];
 
+const GLYPH_W = 74;
+const GLYPH_H = 20;
+
 export function Legend() {
+  const t = useT();
+  const locale = useLocale();
+
   return (
-    <section className="rounded-xl border border-white/10 bg-white/[0.03] p-4">
-      <div className="mb-3 text-xs text-white/40">
-        Visual language — color = feeling · turbulence = arousal · flow = energy
-      </div>
-      <div className="grid grid-cols-2 gap-3 sm:grid-cols-3">
-        {ITEMS.map((it, i) => {
-          const c = mapEmotionToVisual(it.emotion).color;
-          const bright = `hsl(${c.h} ${c.s}% ${Math.min(85, c.l + 28)}%)`;
-          const mid = `hsl(${c.h} ${c.s}% ${c.l}%)`;
-          const deep = `hsl(${(c.h + 32) % 360} ${c.s}% ${Math.max(20, c.l - 12)}%)`;
-          return (
-            <div key={i} className="flex items-center gap-3">
-              <div
-                className="h-12 w-12 shrink-0 rounded-full shadow-[0_0_18px_-2px_rgba(255,255,255,0.25)]"
-                style={{
-                  background: `radial-gradient(circle at 38% 32%, ${bright}, ${mid} 55%, ${deep} 100%)`,
-                }}
+    <div className="space-y-3">
+      {ITEMS.map(({ key, emotion }) => {
+        const visual = mapEmotionToVisual(emotion);
+        const c = visual.color;
+        return (
+          <div key={key} className="flex items-center gap-3.5">
+            <svg
+              viewBox={`0 0 ${GLYPH_W} ${GLYPH_H}`}
+              width={GLYPH_W}
+              height={GLYPH_H}
+              className="shrink-0"
+              aria-hidden
+            >
+              <path
+                d={waveGlyphPath(visual, GLYPH_W, GLYPH_H, CHIP_GLYPH)}
+                fill={`hsl(${c.h} ${c.s}% ${c.l}%)`}
               />
-              <div className="min-w-0">
-                <div className="text-sm text-white">{it.label}</div>
-                <div className="truncate text-xs text-white/50">{it.note}</div>
+            </svg>
+            <div className="min-w-0">
+              <div className="text-[12px]">
+                {emotionName(emotion.category as EmotionCategory, locale)}
+              </div>
+              <div className="text-[11px] leading-snug text-faint">
+                {t.legendReads[key]}
               </div>
             </div>
-          );
-        })}
-      </div>
-    </section>
+          </div>
+        );
+      })}
+    </div>
   );
 }

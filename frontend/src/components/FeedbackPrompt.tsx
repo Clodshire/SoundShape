@@ -63,7 +63,7 @@ export function FeedbackPrompt({
   );
 
   return (
-    <div className="ss-fb pointer-events-auto fixed bottom-5 right-5 z-50 w-[300px] overflow-hidden rounded-xl border border-white/15 bg-neutral-900/95 text-white shadow-2xl backdrop-blur">
+    <div className="ss-fb pointer-events-auto fixed bottom-5 right-5 z-50 w-[300px] overflow-hidden rounded-xl border border-line bg-raised text-ink shadow-xl">
       <style>{`
         @keyframes ss-fb-drain { from { width: 100%; } to { width: 0%; } }
         .ss-fb-bar { animation: ss-fb-drain linear forwards; }
@@ -73,33 +73,33 @@ export function FeedbackPrompt({
       {needsConsent ? (
         <div className="p-4">
           <div className="text-sm font-medium">감정 인식을 함께 개선할까요?</div>
-          <p className="mt-2 text-xs leading-relaxed text-white/70">
+          <p className="mt-2 text-xs leading-relaxed text-muted">
             AI가 헷갈린 구간에서 가끔 짧게 여쭤봅니다. 답변은 정확도 개선에만
-            쓰이며, <strong className="text-white/90">음성은 저장하지 않고</strong>{" "}
+            쓰이며, <strong className="text-ink">음성은 저장하지 않고</strong>{" "}
             분석된 숫자만 저장합니다.
           </p>
           <div className="mt-3 flex gap-2">
             <button
               type="button"
               onClick={() => decide(true)}
-              className="flex-1 rounded-lg bg-white px-3 py-1.5 text-xs font-medium text-black transition hover:bg-white/90"
+              className="flex-1 rounded-lg bg-ink px-3 py-1.5 text-xs font-medium text-white transition hover:opacity-90"
             >
               참여하기
             </button>
             <button
               type="button"
               onClick={() => decide(false)}
-              className="rounded-lg border border-white/20 px-3 py-1.5 text-xs text-white/70 transition hover:bg-white/10"
+              className="rounded-lg border border-line px-3 py-1.5 text-xs text-muted transition hover:border-line-strong hover:text-ink"
             >
               사양할게요
             </button>
           </div>
-          <p className="mt-2 text-[10px] text-white/40">
+          <p className="mt-2 text-[10px] text-muted">
             설정에서 언제든 바꿀 수 있습니다.
           </p>
         </div>
       ) : answered ? (
-        <div className="px-4 py-5 text-center text-sm text-white/80">
+        <div className="px-4 py-5 text-center text-sm text-ink">
           고맙습니다 — 정확도 개선에 반영할게요.
         </div>
       ) : (
@@ -111,7 +111,7 @@ export function FeedbackPrompt({
                 type="button"
                 onClick={onClose}
                 aria-label="닫기"
-                className="-mr-1 -mt-1 shrink-0 rounded px-1.5 text-white/40 transition hover:text-white/80"
+                className="-mr-1 -mt-1 shrink-0 rounded px-1.5 text-muted transition hover:text-ink"
               >
                 ×
               </button>
@@ -123,7 +123,7 @@ export function FeedbackPrompt({
                   key={o.value}
                   type="button"
                   onClick={() => answer(o.value)}
-                  className="rounded-lg border border-white/15 px-2 py-2 text-xs text-white/90 transition hover:border-white/40 hover:bg-white/10"
+                  className="rounded-lg border border-line px-2 py-2 text-xs text-ink transition hover:border-line-strong hover:bg-well"
                 >
                   {o.label}
                 </button>
@@ -133,7 +133,7 @@ export function FeedbackPrompt({
             <button
               type="button"
               onClick={() => answer(config.unsure_value)}
-              className="mt-2 w-full rounded-lg px-2 py-1.5 text-xs text-white/50 transition hover:bg-white/5 hover:text-white/80"
+              className="mt-2 w-full rounded-lg px-2 py-1.5 text-xs text-muted transition hover:bg-well hover:text-ink"
             >
               {config.unsure_label}
             </button>
@@ -141,9 +141,9 @@ export function FeedbackPrompt({
 
           {/* Drains over display_seconds; dismissal fires on animation end, so
               hovering (which pauses the animation) also pauses the deadline. */}
-          <div className="h-[3px] w-full bg-white/10">
+          <div className="h-[3px] w-full bg-well">
             <div
-              className="ss-fb-bar h-full bg-white/50"
+              className="ss-fb-bar h-full bg-accent"
               style={{ animationDuration: `${config.display_seconds}s` }}
               onAnimationEnd={onClose}
             />

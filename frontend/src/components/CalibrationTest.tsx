@@ -309,7 +309,7 @@ export function CalibrationTest({
         <dl className="mt-4 space-y-1 text-sm">
           {Object.entries(result).map(([k, v]) => (
             <div key={k} className="flex justify-between border-b border-white/10 py-1">
-              <dt className="text-white/50">{k}</dt>
+              <dt className="text-white/65">{k}</dt>
               <dd className={v > 1 ? "text-emerald-400" : v < 1 ? "text-amber-400" : ""}>
                 ×{v}
               </dd>
@@ -340,7 +340,7 @@ export function CalibrationTest({
           <br />
           모르겠으면 짐작으로 고르셔도 됩니다.
         </p>
-        <label className="mt-5 block text-xs text-white/40">
+        <label className="mt-5 block text-xs text-white/60">
           참가자 구분 (선택 — 예: 가족, 친구, 학급)
           <input
             value={group}
@@ -363,7 +363,7 @@ export function CalibrationTest({
     const ct = crossover[crossIndex];
     return (
       <Shell onClose={onClose}>
-        <div className="flex items-center justify-between text-xs text-white/40">
+        <div className="flex items-center justify-between text-xs text-white/60">
           <span>
             2단계 · {crossIndex + 1} / {crossover.length}
           </span>
@@ -395,7 +395,7 @@ export function CalibrationTest({
         <button
           type="button"
           onClick={() => answerCrossover("__unsure__")}
-          className="mt-2 h-9 w-full text-xs text-white/35 transition hover:text-white/60"
+          className="mt-2 h-9 w-full text-xs text-white/60 transition hover:text-white/60"
         >
           {config.questions.unsure}
         </button>
@@ -417,7 +417,7 @@ export function CalibrationTest({
           </strong>
           되므로 중단했습니다.
         </p>
-        <p className="mt-3 text-xs text-white/40">
+        <p className="mt-3 text-xs text-white/60">
           다른 탭을 닫거나 브라우저를 새로 켠 뒤 다시 시도해 주세요. 그래픽
           컨텍스트가 부족할 때 주로 발생합니다.
         </p>
@@ -434,7 +434,7 @@ export function CalibrationTest({
 
   return (
     <Shell onClose={onClose}>
-      <div className="flex items-center justify-between text-xs text-white/40">
+      <div className="flex items-center justify-between text-xs text-white/60">
         <span>
           {index + 1} / {trials!.length}
         </span>
@@ -488,7 +488,7 @@ export function CalibrationTest({
       <button
         type="button"
         onClick={() => answer("__unsure__")}
-        className="mt-2 h-9 w-full text-xs text-white/35 transition hover:text-white/60"
+        className="mt-2 h-9 w-full text-xs text-white/60 transition hover:text-white/60"
       >
         {config.questions.unsure}
       </button>
@@ -503,14 +503,23 @@ function Shell({
   children: React.ReactNode;
   onClose: () => void;
 }) {
+  // This dialog is deliberately dark while the rest of the app is light, and
+  // its colours are written out rather than taken from the theme tokens.
+  //
+  // It is a measurement instrument: it asks a participant what they can see in
+  // a stimulus rendered by the same shader as the stage, and what they can see
+  // depends on the ground that stimulus sits on. Restyling it later — even a
+  // tasteful restyle — would mean two participants answered different
+  // questions, and /study compares answers across people. Hard-coded colours
+  // here are the point: they cannot drift when the palette does.
   return (
-    <div className="fixed inset-0 z-[200] flex items-center justify-center bg-black/80 p-4">
-      <div className="relative w-full max-w-md rounded-2xl border border-white/12 bg-zinc-950 p-6">
+    <div className="fixed inset-0 z-[200] flex items-center justify-center bg-black/85 p-4 text-white">
+      <div className="relative w-full max-w-md rounded-2xl border border-white/15 bg-zinc-950 p-6">
         <button
           type="button"
           onClick={onClose}
           aria-label="닫기"
-          className="absolute right-4 top-4 text-white/35 transition hover:text-white/70"
+          className="absolute right-4 top-4 text-white/60 transition hover:text-white"
         >
           ×
         </button>

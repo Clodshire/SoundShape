@@ -1,26 +1,134 @@
 @import "tailwindcss";
 
+/* ─────────────────────────────────────────────────────────────────────────
+   SoundShape — one committed light theme.
+   ─────────────────────────────────────────────────────────────────────────
+
+   The palette is not invented here. It is lifted from the A0 research poster
+   (poster/SoundShape 포스터 A0.pdf), whose brief settles it outright:
+
+       밝은 바탕(흰색/아주 연한 회색)에 짙은 글자. 다크 테마 금지.
+       강조색 하나: 따뜻한 주황~빨강
+       보조 2색: 초록 = 측정값 / 회색 = AI 판단  — "출처 구분"에만 사용
+
+   Values below were sampled from the rendered PDF, so the demo, the poster and
+   the slides are the same object in front of the same judges. The dark theme
+   that used to live here is gone on purpose: one theme executed properly beats
+   two maintained badly, and the poster brief rules it out anyway.
+
+   The green/grey pair is reserved. It means MEASURED versus INFERRED and
+   nothing else — never decoration, never status. It is the visual form of the
+   project's actual claim, so spending it elsewhere would blunt it.
+
+   Every text token clears WCAG AA (4.5:1) on --paper. --ink 17.7:1 ·
+   --muted 6.1:1 · --faint 4.6:1.
+   ───────────────────────────────────────────────────────────────────────── */
+
 :root {
-  --background: #ffffff;
-  --foreground: #171717;
+  color-scheme: light;
+
+  --paper: #fbfaf7; /* page */
+  --raised: #ffffff; /* the rare panel that needs to lift off the page */
+  --well: #f3f1ec; /* stage ground, inset tracks */
+  --line: #e0ddd6;
+  --line-strong: #c9c5bc;
+
+  --ink: #14141a;
+  --muted: #5f5f68;
+  --faint: #74727a;
+
+  --accent: #d0402a; /* the poster's one warm accent */
+  --accent-tint: #fdefee;
+
+  /* Reserved pair — source of a value, nothing else. */
+  --measured: #3f8f57;
+  --measured-tint: #e9f2ec;
+  --inferred: #6b6971;
+  --inferred-tint: #f1f0ec;
+
+  --danger: #b3261e;
+  --danger-tint: #fdefee;
 }
 
 @theme inline {
-  --color-background: var(--background);
-  --color-foreground: var(--foreground);
-  --font-sans: var(--font-geist-sans);
+  --color-paper: var(--paper);
+  --color-raised: var(--raised);
+  --color-well: var(--well);
+  --color-line: var(--line);
+  --color-line-strong: var(--line-strong);
+
+  --color-ink: var(--ink);
+  --color-muted: var(--muted);
+  --color-faint: var(--faint);
+
+  --color-accent: var(--accent);
+  --color-accent-tint: var(--accent-tint);
+
+  --color-measured: var(--measured);
+  --color-measured-tint: var(--measured-tint);
+  --color-inferred: var(--inferred);
+  --color-inferred-tint: var(--inferred-tint);
+
+  --color-danger: var(--danger);
+  --color-danger-tint: var(--danger-tint);
+
+  --font-sans: var(--font-sans-stack);
   --font-mono: var(--font-geist-mono);
 }
 
-@media (prefers-color-scheme: dark) {
-  :root {
-    --background: #0a0a0a;
-    --foreground: #ededed;
-  }
+html {
+  background: var(--paper);
 }
 
 body {
-  background: var(--background);
-  color: var(--foreground);
-  font-family: Arial, Helvetica, sans-serif;
+  background: var(--paper);
+  color: var(--ink);
+  /* Geist carries Latin and the wordmark; Pretendard carries Hangul. Both are
+     self-hosted through next/font — the venue's wifi is not a dependency, and
+     the Korean UI no longer changes shape between one laptop and the next. */
+  font-family: var(--font-sans-stack);
+}
+
+/* Numerals are set in mono everywhere they are data rather than prose: a
+   readout that jitters as digits change width reads as an animation instead of
+   a measurement. */
+.tnum {
+  font-family: var(--font-geist-mono);
+  font-variant-numeric: tabular-nums;
+}
+
+/* Section label — the poster's eyebrow, small mono caps with wide tracking. */
+.eyebrow {
+  font-family: var(--font-geist-mono);
+  font-size: 10px;
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+  color: var(--faint);
+}
+
+:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
+  border-radius: 3px;
+}
+
+/* The visual language is built on movement, so "reduce motion" cannot mean
+   "remove the message" — the emotion field keeps rendering either way. What
+   stops here is decoration.
+   Deliberately NOT the blanket `animation-duration: 0.001ms !important` this
+   rule is usually written as: that collapses the two animations that carry
+   information — the loading spinner, the only sign a 30-second model load is
+   progressing, and .ss-fb-bar, whose animationend is what dismisses a feedback
+   prompt, so zeroing it makes every prompt vanish the instant it appears. */
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    transition-duration: 0.001ms !important;
+    scroll-behavior: auto !important;
+  }
+
+  .animate-pulse {
+    animation: none !important;
+  }
 }

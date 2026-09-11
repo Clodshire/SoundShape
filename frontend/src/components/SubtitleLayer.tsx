@@ -2,6 +2,13 @@
 
 import type { TimelineFrame } from "@/types/emotion";
 
+// Captions now sit on the light stage, so they are dark type on paper rather
+// than white type with a drop shadow. The word-level highlight has to be
+// rebuilt for that: on black, "spoken already" was carried by opacity, which
+// on a light ground would read as washed-out grey rather than as emphasis.
+// Weight carries it here instead — the active word is the heavy one — with
+// colour only supporting, so the line stays readable in greyscale.
+
 interface Props {
   frame: TimelineFrame | null;
   currentTime: number;
@@ -14,32 +21,23 @@ export function SubtitleLayer({ frame, currentTime }: Props) {
 
   return (
     <div className="max-w-2xl text-center">
-      <p className="text-3xl font-medium leading-snug tracking-tight drop-shadow-[0_2px_10px_rgba(0,0,0,0.95)]">
+      <p className="text-[30px] font-medium leading-snug tracking-tight text-ink">
         {/* An em dash opening the line is the subtitle convention for a change
-            of speaker, so it needs no legend. Held at the same brightness as
-            spoken text rather than following the word highlight — it belongs
-            to the whole line, not to any word in it. */}
-        {frame.speaker_changed && (
-          <span className="text-white/85">{"\u2014 "}</span>
-        )}
+            of speaker, so it needs no legend. */}
+        {frame.speaker_changed && <span>{"— "}</span>}
         {words && words.length > 0 ? (
           words.map((w, i) => {
             const active = currentTime >= w.start && currentTime < w.end;
-            const past = currentTime >= w.end;
+            const spoken = currentTime >= w.end;
             return (
               <span
                 key={i}
                 className={
                   active
-                    ? "text-white"
-                    : past
-                      ? "text-white/80"
-                      : "text-white/40"
-                }
-                style={
-                  active
-                    ? { textShadow: "0 0 14px rgba(255,255,255,0.55)" }
-                    : undefined
+                    ? "font-bold text-ink"
+                    : spoken
+                      ? "text-ink"
+                      : "text-muted"
                 }
               >
                 {w.word}{" "}
@@ -47,7 +45,7 @@ export function SubtitleLayer({ frame, currentTime }: Props) {
             );
           })
         ) : (
-          <span className="text-white">{frame.text}</span>
+          <span>{frame.text}</span>
         )}
       </p>
     </div>
