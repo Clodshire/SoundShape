@@ -132,6 +132,12 @@ optimistic-ish estimate. Higher numbers are reachable with more of the 19k clips
 - Zero-shot baseline: N = 120, 2 actors. English trained eval: N = 480, 8
   actors, speaker-independent. Korean: N = 1750, stratified-random (acted vs
   conversational data are not directly comparable).
-- Cached features (`data/timelines/*.npz`) and the trained model
-  (`backend/models/emotion_clf.joblib`) are git-ignored but regenerate from the
-  scripts.
+- Cached features (`data/timelines/*.npz`) are git-ignored but regenerate from
+  the scripts. The two trained classifiers are **tracked in the repo**
+  (`backend/models/emotion_clf.joblib`, `backend/models/korean_clf.joblib`):
+  the English one does regenerate from `scripts/train_classifier.py` on the
+  RAVDESS clips here, but the **Korean one does not** — rebuilding it needs the
+  AIHub conversational-speech dataset, which is access-gated and not in this
+  repo. `backend/pipeline/trained_classifier.py` picks between them by
+  language, so a clone without the Korean bundle silently falls back to the
+  English model on Korean audio.

@@ -37,6 +37,11 @@ Thumbs.db
 # --- ML model caches (HuggingFace, Torch hub) ---
 backend/models/*
 !backend/models/.gitkeep
+# The two trained classifiers are tracked deliberately (~6MB total). The
+# Korean one cannot be regenerated without the AIHub dataset, which is
+# access-gated and not in this repo, so the file itself is the only copy.
+!backend/models/emotion_clf.joblib
+!backend/models/korean_clf.joblib
 
 # --- Large data ---
 data/datasets/*
