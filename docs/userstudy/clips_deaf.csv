@@ -1,0 +1,15 @@
+clip_id,true_emotion,incongruent,music,source_note
+P1,happy,no,no,연습용 — 채점하지 않음
+P2,sad,no,no,연습용 — 채점하지 않음
+1,sad,no,no,
+2,angry,no,no,
+3,happy,no,no,
+4,neutral,yes,no,비꼼 — "괜찮아" 진심 vs 비꼼 쌍의 비꼼 쪽
+5,afraid,no,no,
+6,surprised,no,no,
+7,sad,yes,no,억눌린 슬픔 — 말은 담담하고 목소리만 무너지는 클립
+8,happy,no,no,
+9,angry,yes,no,비꼼 — 칭찬하는 말을 화난 목소리로
+10,sad,no,yes,배경 음악 있음 — 음원 분리 확인용
+11,angry,no,yes,배경 음악 있음 — 음원 분리 확인용
+12,neutral,no,no,2인 대화 — 화자 전환 문항에도 사용

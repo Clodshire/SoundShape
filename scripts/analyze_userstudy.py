@@ -1,14 +1,25 @@
-"""Analyze the SoundShape user study (Test C).
+"""Analyze a SoundShape user study (Test C, Test D, ...).
 
-Reads docs/userstudy/clips.csv (answer key) + responses.csv (collected answers),
-scores each emotion answer against the clip's true emotion, and reports accuracy
-**with vs. without SoundShape**, a paired significance test, and a bar chart.
+Reads an answer key (clips.csv) + collected answers (responses.csv), scores each
+emotion answer against the clip's true emotion, and reports accuracy **with vs.
+without SoundShape**, paired significance tests, effect size, and a bar chart.
 
+    # Test C — the original 6-participant simulated study (unchanged defaults)
     ~/.soundshape_venv/bin/python scripts/analyze_userstudy.py
+
+    # Test D — the Deaf-participant study, written to its own files
+    ~/.soundshape_venv/bin/python scripts/analyze_userstudy.py \
+        --clips docs/userstudy/clips_deaf.csv \
+        --responses docs/userstudy/responses_deaf.csv \
+        --tag deaf --title "SoundShape user study (Deaf participants)"
+
+`--tag` keeps each study's chart separate. Without it Test D would overwrite
+Test C's figure, and Test C's numbers are cited in the report.
 """
 
 from __future__ import annotations
 
+import argparse
 import csv
 import sys
 from collections import defaultdict
@@ -32,7 +43,15 @@ def norm(s: str) -> str:
 
 
 def main() -> int:
-    clips_p, resp_p = US / "clips.csv", US / "responses.csv"
+    ap = argparse.ArgumentParser(description=__doc__)
+    ap.add_argument("--clips", type=Path, default=US / "clips.csv")
+    ap.add_argument("--responses", type=Path, default=US / "responses.csv")
+    ap.add_argument("--tag", default="",
+                    help="suffix for the output figure, e.g. 'deaf'")
+    ap.add_argument("--title", default="SoundShape user study (sound off)")
+    args = ap.parse_args()
+
+    clips_p, resp_p = args.clips, args.responses
     if not clips_p.exists() or not resp_p.exists():
         print(f"Need {clips_p} and {resp_p}.")
         return 1
@@ -94,10 +113,22 @@ def main() -> int:
     if len(diffs) >= 2 and np.std(diffs) > 0:
         from scipy import stats
         t, pval = stats.ttest_1samp(diffs, 0.0)
+        # Cohen's dz — the paired effect size. p alone says "not nothing"; it
+        # never says how big, and with a small N that is the whole question.
+        dz = float(np.mean(diffs) / np.std(diffs, ddof=1))
         print(f"\nPer-participant mean improvement: {np.mean(diffs):+.0%} "
-              f"(n={len(diffs)}, paired t-test p = {pval:.3f})")
+              f"(n={len(diffs)}, paired t-test p = {pval:.3f}, Cohen's dz = {dz:.2f})")
         if pval < 0.05:
             print("  → statistically significant (p < 0.05).")
+        # With a handful of participants normality cannot be checked, so report
+        # the rank test too. Agreement between the two is the real reassurance.
+        try:
+            w, wp = stats.wilcoxon(diffs)
+            print(f"  Wilcoxon signed-rank (no normality assumption): p = {wp:.3f}")
+            if pval is not None and (pval < 0.05) != (wp < 0.05):
+                print("  ⚠️  the two tests disagree — report both, claim neither alone.")
+        except ValueError as e:
+            print(f"  Wilcoxon not applicable: {e}")
 
     # Sub-analysis: incongruent (sarcasm/suppressed) clips — the hero case.
     iA = [r for r in A if r["incong"]]; iB = [r for r in B if r["incong"]]
@@ -120,13 +151,14 @@ def main() -> int:
                 ha="center", fontweight="bold")
     ax.set_ylabel("Emotion-recognition accuracy (%)")
     ax.set_ylim(0, 100)
-    title = "SoundShape user study (sound off)"
+    title = args.title
     if pval is not None:
         title += f"\np = {pval:.3f}, N = {len(parts)}"
     ax.set_title(title)
     fig.tight_layout()
-    fig.savefig(OUT / "userstudy_result.png", dpi=140)
-    print(f"\nSaved → docs/eval/userstudy_result.png")
+    name = f"userstudy_result{'_' + args.tag if args.tag else ''}.png"
+    fig.savefig(OUT / name, dpi=140)
+    print(f"\nSaved → docs/eval/{name}")
     return 0
 
 
