@@ -1,0 +1,86 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<title>SoundShape 응답지</title>
+<style>
+  @page { size: A4 landscape; margin: 10mm; }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0; background: #fff; color: #111;
+    font-family: "Apple SD Gothic Neo", "Noto Sans KR", system-ui, sans-serif;
+  }
+  .hdr { display: flex; align-items: baseline; gap: 8mm; margin-bottom: 3mm; }
+  .hdr h1 { font-size: 17px; margin: 0; }
+  .hdr .f { font-size: 13px; }
+  .hdr .f b { font-size: 15px; letter-spacing: 2px; }
+
+  table { width: 100%; border-collapse: collapse; table-layout: fixed; }
+  th, td { border: 1px solid #999; text-align: center; }
+  thead th { background: #f2f2f2; padding: 1.5mm 0.5mm; font-size: 11px; font-weight: 700; }
+  thead th .e { font-size: 21px; display: block; line-height: 1.15; }
+  .no { width: 13mm; font-size: 15px; font-weight: 800; }
+  tbody td { height: 9.5mm; }
+  .gap { width: 4mm; border-top: none; border-bottom: none; background: #fff; }
+  .conf { background: #fafafa; }
+  .conf .bar { display: block; margin: 0 auto 0.5mm; background: #111; width: 3.5mm; }
+  .tone td { height: 7mm; background: #fffbe6; font-size: 12px; }
+  .tone .lab { text-align: right; padding-right: 2mm; font-size: 11px; color: #666; }
+  .tone .opt { font-size: 13px; }
+  .tone .opt .e { font-size: 17px; }
+  .note { margin-top: 3mm; font-size: 10.5px; color: #666; line-height: 1.6; }
+</style>
+</head>
+<body>
+
+<div class="hdr">
+  <h1>어떤 감정으로 보였나요?</h1>
+  <span class="f">참가자 <b>D _ _</b></span>
+  <span class="f">양식 <b>_</b></span>
+  <span class="f">날짜 20 _ _ . _ _ . _ _</span>
+</div>
+
+<table id="t"></table>
+
+<p class="note">
+  가운데 노란 줄(7·8·9번)은 <b>진심인지 비꼼인지</b>도 함께 표시합니다.<br>
+  오른쪽 <b>확신도</b>는 왼쪽이 “찍었다”, 오른쪽이 “확실하다”입니다. 하나만 고릅니다.<br>
+  <b>❓ 모름</b>을 고르는 것은 틀린 답이 아닙니다. 참가자에게 미리 알려 주십시오.
+</p>
+
+<script>
+const EMO = [
+  ["😊", "기쁨"], ["😡", "화남"], ["😨", "공포"], ["😢", "슬픔"],
+  ["😲", "놀람"], ["😐", "감정 없음"], ["❓", "모름"],
+];
+const TONE = new Set([7, 8, 9]);
+
+let head = `<thead><tr><th class="no">영상</th>`;
+head += EMO.map(([e, k]) => `<th><span class="e">${e}</span>${k}</th>`).join("");
+head += `<th class="gap"></th>`;
+head += [1, 2, 3, 4, 5].map(n =>
+  `<th class="conf"><span class="bar" style="height:${1.2 + n * 1.5}mm"></span>${n}</th>`).join("");
+head += `</tr></thead>`;
+
+let body = "<tbody>";
+for (let i = 1; i <= 12; i++) {
+  body += `<tr><td class="no">${i}</td>`;
+  body += EMO.map(() => `<td></td>`).join("");
+  body += `<td class="gap"></td>`;
+  body += [1, 2, 3, 4, 5].map(() => `<td class="conf"></td>`).join("");
+  body += `</tr>`;
+  if (TONE.has(i)) {
+    body += `<tr class="tone">
+      <td class="lab">${i}번</td>
+      <td colspan="7" class="opt">
+        <span class="e">😊</span> 진심 &nbsp;&nbsp;☐ &nbsp;&nbsp;&nbsp;&nbsp;
+        <span class="e">😏</span> 비꼼 &nbsp;&nbsp;☐
+      </td>
+      <td class="gap"></td><td class="conf" colspan="5"></td></tr>`;
+  }
+}
+body += "</tbody>";
+document.getElementById("t").innerHTML = head + body;
+</script>
+</body>
+</html>
