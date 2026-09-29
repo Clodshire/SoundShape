@@ -31,10 +31,23 @@ export interface Trial {
   options?: string[];
 }
 
-/** Everything a channel is NOT allowed to leak through. */
+/**
+ * Everything a channel is NOT allowed to leak through.
+ *
+ * 고정값은 감정을 하나도 가리키지 않아야 한다. 그런데 이전 값 `{h:0,s:0,l:55}`
+ * 는 매핑 설정의 `color.neutral` 과 **똑같은 회색**이었다 — 이 시스템에서
+ * 회색은 정보가 없는 색이 아니라 "중립"을 뜻하는 신호다. 그 결과 색상을 뺀
+ * 나머지 세 채널의 문항 15개(20개 중)가 전부 중립처럼 보였고, 참가자가
+ * 중립을 고르는 것이 합리적인 상황이 됐다. 고정값이 정답을 유도한 셈이다.
+ *
+ * 그래서 감정 팔레트에 배정되지 않은 색으로 바꾼다. 배정된 색상은
+ * 0·45·50·80·200·220·230·270° 이고, 140°(초록)는 어느 쪽과도 60° 이상
+ * 떨어져 있어 가장 넓은 빈 구간의 한가운데다. 채도는 "회색이 아님"이 보일
+ * 정도로만 올린다.
+ */
 const NEUTRAL: FieldVisual = {
   shape: "simple_circle",
-  color: { h: 0, s: 0, l: 55 },
+  color: { h: 140, s: 34, l: 55 },
   size: 0.5,
   motion: { type: "still", amplitude: 0, speed: 0 },
 };
