@@ -8,7 +8,9 @@ import { TONES, TONE_ORDER } from "./tones";
 import { Waveform } from "./Waveform";
 
 // The public SoundShape site — the confirmed design mockup, wired to the real
-// backend through <DemoCard>. The research/debug view lives at /studio.
+// backend through <DemoCard>. The research/debug view lives at /studio, which
+// this page deliberately does NOT link to — it is reachable by URL only, for
+// the presentation demo. Do not add a link back without asking.
 export function SoundShapeSite({ fontClass }: { fontClass: string }) {
   return (
     <div className={`${styles.site} ${fontClass}`}>
@@ -67,7 +69,7 @@ export function SoundShapeSite({ fontClass }: { fontClass: string }) {
               <p className={styles.featureTextDark}>
                 사람마다 잘 보이는 색과 움직임이 달라요. 5분이면 나에게 맞게 조정돼요.
               </p>
-              <Link href="/studio" className={styles.btnAccent}>
+              <Link href="/study" className={styles.btnAccent}>
                 맞춤 설정 시작하기
               </Link>
             </div>
@@ -126,9 +128,6 @@ export function SoundShapeSite({ fontClass }: { fontClass: string }) {
         <span className={styles.footerLogo}>SoundShape</span>
         <p className={styles.footerText}>
           베타로 운영 중인 서비스이며, 사용자 의견을 반영해 계속 발전하고 있습니다.
-        </p>
-        <p className={styles.footerText}>
-          <Link href="/studio">연구용 분석 화면</Link>
         </p>
       </footer>
     </div>
