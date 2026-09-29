@@ -30,7 +30,7 @@ from backend.mapping.reference import ProsodyReference
 from backend.pipeline import separation, speaker
 from backend.pipeline import asr, audio_io
 from backend.pipeline.chunker import find_chunk_boundaries
-from backend.pipeline.emotion import classify_emotion
+from backend.pipeline.emotion import classify_emotion, refine_category
 from backend.pipeline.prosody import extract_prosody
 
 logger = logging.getLogger(__name__)
@@ -152,6 +152,7 @@ def stream_timeline(
                 # Baseline read BEFORE this segment joins it — same rule the
                 # batch path uses, so a video never renders two ways.
                 baseline = prosody_reference.snapshot()
+                refine_category(emotion_payload, prosody, baseline)
                 prosody_reference.update(prosody)
                 yield {
                     "type": "segment",

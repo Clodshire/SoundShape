@@ -46,7 +46,7 @@ from backend.mapping.engine import map_emotion_to_visual
 from backend.mapping.reference import ProsodyReference
 from backend.pipeline import separation, speaker
 from backend.pipeline import audio_io, asr
-from backend.pipeline.emotion import classify_emotion
+from backend.pipeline.emotion import classify_emotion, refine_category
 from backend.pipeline.prosody import extract_prosody
 
 logger = logging.getLogger(__name__)
@@ -170,6 +170,7 @@ def build_timeline(
             # Baseline read BEFORE this segment joins it — see
             # ProsodyReference.snapshot(). Only hybrid rendering uses it.
             baseline = prosody_reference.snapshot()
+            refine_category(emotion_payload, prosody_payload, baseline)
             prosody_reference.update(prosody_payload)
 
             segments_out.append(

@@ -138,7 +138,10 @@ def separate_array(
         ref = piece.mean(0)
         std = ref.std() or 1.0
         normed = ((piece - ref.mean()) / std)[None]
-        stems = model(normed)[0] * std + ref.mean()
+        # Inference only — without no_grad, torch tracks gradients (slower,
+        # more memory) and .numpy() refuses the result outright.
+        with torch.no_grad():
+            stems = model(normed)[0] * std + ref.mean()
         stems = stems.cpu().numpy()
         vocals = stems[vocal_idx]
         music = stems.sum(axis=0) - vocals

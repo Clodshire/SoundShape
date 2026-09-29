@@ -13,6 +13,7 @@
 
 import { createEmotionField, type FieldVisual } from "../../frontend/src/lib/emotionField";
 import { FeedbackController } from "./feedback";
+import mappingConfig from "../../config/mapping_config.json";
 
 const API_BASE = "http://localhost:8000";
 const PREBUFFER_SEC = 4;
@@ -30,7 +31,114 @@ interface Segment {
   visual: FieldVisual;
   // Present only on segments the classifier was unsure about; opaque handle
   // for features held server-side (see backend/pipeline/feedback.py).
-  emotion?: { feedback_id?: string; category_confidence?: number };
+  emotion?: {
+    feedback_id?: string;
+    category?: string;
+    category_confidence?: number;
+  };
+}
+
+// ── Color key ──
+// A small legend in the corner so viewers never have to guess what a color
+// means. Hues come from the same config the renderer uses, so the key always
+// matches the field.
+const EMOTION_KO: Record<string, string> = {
+  anger: "분노",
+  joy: "기쁨",
+  surprise: "놀람",
+  sadness: "슬픔",
+  fear: "두려움",
+  neutral: "중립",
+  sarcasm: "비꼼",
+  resignation: "체념",
+  sincerity: "진심",
+};
+// The categories the current models actually produce.
+const LEGEND_ORDER = ["anger", "joy", "surprise", "sadness", "fear", "neutral"];
+const HUES = mappingConfig.color.hue_by_category as Record<string, number>;
+
+function legendColor(category: string): string {
+  if (category === "neutral" || HUES[category] == null) return "hsl(0 0% 60%)";
+  return `hsl(${HUES[category]} 75% 58%)`;
+}
+
+function buildColorKey(): { root: HTMLDivElement; set: (seg: Segment) => void } {
+  const root = document.createElement("div");
+  Object.assign(root.style, {
+    position: "absolute",
+    top: "12px",
+    left: "12px",
+    background: "rgba(0,0,0,.6)",
+    color: "#fff",
+    padding: "8px 10px",
+    borderRadius: "10px",
+    fontFamily: "system-ui, sans-serif",
+    fontSize: "12px",
+    lineHeight: "1.4",
+    maxWidth: "260px",
+  } as CSSStyleDeclaration);
+
+  const now = document.createElement("div");
+  Object.assign(now.style, {
+    display: "flex",
+    alignItems: "center",
+    gap: "6px",
+    fontSize: "14px",
+    fontWeight: "700",
+    marginBottom: "6px",
+  } as CSSStyleDeclaration);
+  const nowDot = document.createElement("span");
+  Object.assign(nowDot.style, {
+    width: "10px",
+    height: "10px",
+    borderRadius: "50%",
+    flex: "none",
+    transition: "background-color .6s ease",
+  } as CSSStyleDeclaration);
+  const nowText = document.createElement("span");
+  now.append(nowDot, nowText);
+
+  const list = document.createElement("div");
+  Object.assign(list.style, {
+    display: "flex",
+    flexWrap: "wrap",
+    gap: "4px 10px",
+    opacity: ".85",
+  } as CSSStyleDeclaration);
+  for (const cat of LEGEND_ORDER) {
+    const item = document.createElement("span");
+    Object.assign(item.style, {
+      display: "inline-flex",
+      alignItems: "center",
+      gap: "4px",
+    } as CSSStyleDeclaration);
+    const dot = document.createElement("span");
+    Object.assign(dot.style, {
+      width: "8px",
+      height: "8px",
+      borderRadius: "50%",
+      background: legendColor(cat),
+    } as CSSStyleDeclaration);
+    item.append(dot, document.createTextNode(EMOTION_KO[cat]));
+    list.appendChild(item);
+  }
+  root.append(now, list);
+  root.style.display = "none";
+
+  return {
+    root,
+    set(seg: Segment) {
+      const cat = seg.emotion?.category ?? "neutral";
+      const c = seg.visual.color;
+      nowDot.style.backgroundColor =
+        c.s > 0 ? `hsl(${c.h} ${Math.max(c.s, 55)}% ${c.l}%)` : legendColor(cat);
+      const conf = seg.emotion?.category_confidence;
+      nowText.textContent =
+        `지금: ${EMOTION_KO[cat] ?? cat}` +
+        (conf != null ? ` · 확신 ${Math.round(conf * 100)}%` : "");
+      root.style.display = "";
+    },
+  };
 }
 
 interface Session {
@@ -93,6 +201,7 @@ function injectButton() {
       start(btn);
     }
   });
+  if (!getVideoId()) btn.style.display = "none";
   document.body.appendChild(btn);
 }
 
@@ -168,6 +277,8 @@ async function start(btn: HTMLButtonElement) {
   overlay.appendChild(canvas);
   overlay.appendChild(caption);
   overlay.appendChild(status);
+  const colorKey = buildColorKey();
+  overlay.appendChild(colorKey.root);
   player.appendChild(overlay);
 
   const field = createEmotionField(canvas, { transparent: true });
@@ -253,6 +364,7 @@ async function start(btn: HTMLButtonElement) {
         ? `\u2014 ${segs[idx].text}`
         : segs[idx].text;
       if (idx !== lastIdx) {
+        colorKey.set(segs[idx]);
         field.pulse();
         lastIdx = idx;
         // Entering a new segment is the only moment worth asking about —
@@ -363,6 +475,9 @@ function onVideoChange() {
     "soundshape-btn",
   ) as HTMLButtonElement | null;
   if (!btn) return;
+  // Only show the button on watch pages (the script now runs site-wide so it
+  // survives YouTube's SPA navigation from search/home into a video).
+  btn.style.display = vid ? "" : "none";
   if (wasActive && vid) {
     btn.textContent = "✦ SoundShape — stop";
     void start(btn);

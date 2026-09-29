@@ -15,6 +15,7 @@
     };
     let burst = 0;
     let raf = null;
+    let pendingCapture = null;
     function start2DFallback() {
       const c2 = document.createElement("canvas");
       c2.className = canvas.className;
@@ -84,6 +85,10 @@
       raf = requestAnimationFrame(draw);
       return {
         renderer: "fallback-2d",
+        // The fallback draws a coloured glow and nothing else, so a capture of it
+        // would look like a finished figure while silently omitting shape and
+        // motion. Refuse rather than hand back a misleading image.
+        capture: async () => null,
         setVisual(v) {
           visual = v;
         },
@@ -203,11 +208,25 @@
       gl.uniform1f(U.sharp, cur.sharp);
       gl.uniform1f(U.unsure, cur.unsure);
       gl.drawArrays(gl.TRIANGLES, 0, 3);
+      if (pendingCapture) {
+        const done = pendingCapture;
+        pendingCapture = null;
+        const out = document.createElement("canvas");
+        out.width = canvas.width;
+        out.height = canvas.height;
+        out.getContext("2d")?.drawImage(canvas, 0, 0);
+        done(out);
+      }
       raf = requestAnimationFrame(render);
     };
     raf = requestAnimationFrame(render);
     return {
       renderer: "webgl",
+      capture() {
+        return new Promise((resolve) => {
+          pendingCapture = resolve;
+        });
+      },
       setVisual(v) {
         visual = v;
       },
@@ -229,6 +248,7 @@
   function noopHandle() {
     return {
       renderer: "none",
+      capture: async () => null,
       setVisual() {
       },
       setTransparent() {
@@ -800,11 +820,367 @@ void main(){
     keyframesAdded = true;
   }
 
+  // config/mapping_config.json
+  var mapping_config_default = {
+    version: "1.5.0",
+    description: "SoundShape cross-modal mapping spec. Maps an emotion vector (category, valence, arousal) PLUS interpretable prosody features (jitter, shimmer, intensity, speech rate) to a visual specification (shape, color, size, motion). Each channel is grounded in published research; human-readable justification in docs/mapping_rationale.md. Single source of truth, consumed by backend/mapping/engine.py and frontend/src/lib/mapping.ts (synced via scripts/sync_mapping_config.py). NOTE: arousal is signed [-1,+1]; size and saturation map it MONOTONICALLY via (arousal+1)/2 so calm reads small/muted and excited reads large/vivid. The base visual is set by the emotion vector (from wav2vec2); prosody_modulation then nudges motion/size using the MEASURED PRAAT features so the explicit, interpretable acoustics drive the output too.",
+    shape: {
+      citation: "Angular forms are perceived as threatening, rounded forms as warm/safe: Aronoff et al. (1992); Larson, Aronoff & Stearns (2007). Neural basis: sharp-contoured objects preferentially engage the amygdala (threat): Bar & Neta (2006, 2007). Supported by the Bouba/Kiki sound-shape effect: K\xF6hler (1929); Ramachandran & Hubbard (2001).",
+      by_category: {
+        anger: "jagged_star",
+        fear: "trembling_spikes",
+        joy: "expanding_burst",
+        surprise: "expanding_burst",
+        sadness: "flowing_wave",
+        resignation: "drooping_ellipse",
+        sincerity: "soft_circle",
+        sarcasm: "jagged_star",
+        neutral: "simple_circle"
+      },
+      default: "simple_circle"
+    },
+    color: {
+      citation: "HUE: anger=red is cross-culturally robust (Hupka et al. 1997). Remaining hues from color-emotion norms (Kaya & Epps 2004; Valdez & Mehrabian 1994). SATURATION rises monotonically with arousal (Valdez & Mehrabian 1994; Wilms & Oberfeld 2018). LIGHTNESS rises with valence \u2014 brighter = more pleasant (Valdez & Mehrabian 1994). DESIGN CHOICES (weaker cross-cultural evidence): sadness=blue is partly an English idiom; fear=violet is our choice (Hupka found fear clusters on black/grey).",
+      hue_by_category: {
+        anger: 0,
+        sadness: 220,
+        joy: 50,
+        fear: 270,
+        surprise: 45,
+        resignation: 230,
+        sincerity: 80,
+        sarcasm: 200
+      },
+      neutral: {
+        h: 0,
+        s: 0,
+        l: 55
+      },
+      saturation: {
+        base: 30,
+        arousal_gain: 60,
+        min: 25,
+        max: 95
+      },
+      lightness: {
+        base: 50,
+        valence_gain: 12,
+        arousal_gain: 0,
+        min: 35,
+        max: 70
+      }
+    },
+    size: {
+      citation: "Size scales monotonically with arousal \u2014 Russell (1980) activation axis; larger forms read as more intense. Linguistically reinforced by the Frequency Code (Ohala 1994): low pitch \u2192 large/dominant, high pitch \u2192 small; and sound-magnitude symbolism (Sapir 1929). Monotonic in signed arousal: calm \u2192 small, excited \u2192 large.",
+      base: 0.2,
+      arousal_gain: 0.7,
+      min: 0.2,
+      max: 0.95
+    },
+    motion: {
+      citation: "Movement kinematics carry emotion: fast/jerky motion reads as anger/high-arousal, slow/smooth as sadness/low-arousal \u2014 Pollick et al. (2001). General temporal crossmodal mapping (fast sound \u2194 fast motion) \u2014 Spence (2011). The vocal instability we mirror as visual instability (jitter/shimmer in high-arousal states) is from Banse & Scherer (1996).",
+      rules: [
+        {
+          when: {
+            arousal_gt: 0.4,
+            valence_lt: 0
+          },
+          motion: {
+            type: "shake",
+            amplitude: 0.7,
+            speed: 0.9
+          },
+          why: "High arousal + negative valence (anger-like) \u2192 sharp, jittery agitation."
+        },
+        {
+          when: {
+            category: "fear"
+          },
+          motion: {
+            type: "tremor",
+            amplitude: 0.5,
+            speed: 1
+          },
+          why: "Fear \u2192 fast, fine trembling."
+        },
+        {
+          when: {
+            arousal_gt: 0.4
+          },
+          motion: {
+            type: "pulse",
+            amplitude: 0.55,
+            speed: 0.7
+          },
+          why: "High arousal + non-negative valence (joy/surprise) \u2192 energetic pulsing."
+        },
+        {
+          when: {
+            category: "sadness",
+            arousal_lt: -0.2,
+            valence_lt: 0
+          },
+          motion: {
+            type: "slow_drift",
+            amplitude: 0.35,
+            speed: 0.25
+          },
+          why: "Calm sadness \u2192 slow horizontal drifting, like a sigh."
+        },
+        {
+          when: {
+            category: "resignation"
+          },
+          motion: {
+            type: "sink",
+            amplitude: 0.4,
+            speed: 0.25
+          },
+          why: "Resignation \u2192 slow downward sink, an exhale."
+        },
+        {
+          when: {
+            category: "sincerity"
+          },
+          motion: {
+            type: "pulse",
+            amplitude: 0.22,
+            speed: 0.4
+          },
+          why: "Warm sincerity \u2192 soft, gentle pulse."
+        }
+      ],
+      default: {
+        type: "still",
+        amplitude: 0,
+        speed: 0
+      }
+    },
+    prosody_modulation: {
+      citation: "Connects the MEASURED, interpretable PRAAT/Parselmouth features directly to the visual output (the explainable counterpart to wav2vec2's opaque embedding). INSTABILITY: vocal jitter + shimmer rise with agitation, fear, and stress (Banse & Scherer 1996; Juslin & Laukka 2003) \u2192 rendered as visual instability (motion amplitude). INTENSITY: loudness maps to perceptual salience / energy (Spence 2011) \u2192 brightness via size. SPEECH RATE: faster speech \u2192 faster motion (Spence 2011 temporal correspondence).",
+      enabled: true,
+      instability: {
+        _doc: "normalized( (jitter-jmin)/(jmax-jmin) ) averaged with shimmer; result in [0,1] multiplies motion.amplitude up by amplitude_gain.",
+        jitter_min: 5e-3,
+        jitter_max: 0.04,
+        shimmer_min: 0.03,
+        shimmer_max: 0.15,
+        amplitude_gain: 0.7,
+        speed_gain: 0.25
+      },
+      intensity: {
+        _doc: "intensity_mean (dB-ish) normalized over [db_min,db_max]; nudges size up by size_gain.",
+        db_min: 50,
+        db_max: 78,
+        size_gain: 0.12
+      },
+      speech_rate: {
+        _doc: "speech_rate_approx (voiced frames/sec, ~20..90) normalized; nudges motion.speed up by speed_gain.",
+        rate_min: 25,
+        rate_max: 85,
+        speed_gain: 0.2
+      }
+    },
+    confidence: {
+      citation: "Confidence-weighted (uncertainty) visualization: when the emotion classifier is unsure, the glyph EXPRESSES LESS \u2014 muted (lower saturation), smaller, calmer \u2014 rather than asserting a possibly-wrong emotion. Showing graded certainty instead of false confidence is standard practice in uncertainty visualization (Bonneau et al. 2014) and avoids the 'confidently wrong' failure a judge would notice.",
+      _doc: "attenuation f = clamp((confidence - conf_min)/(conf_max - conf_min), floor, 1); saturation *= f; size pulled toward size.min by f; motion.amplitude *= f. floor keeps a minimum expression so it never fully greys out.",
+      enabled: true,
+      conf_min: 0.45,
+      conf_max: 0.85,
+      floor: 0.4
+    },
+    rendering: {
+      citation: "Hybrid rendering: only the channels that genuinely require INFERENCE are driven by the classifier; the channels that can be MEASURED are read straight off the acoustics. Grounded in the asymmetry we measure ourselves \u2014 acoustics predict arousal well (r=0.73) but valence poorly (r=0.42) \u2014 which is the standard finding in vocal-emotion research (Juslin & Laukka 2003; Banse & Scherer 1996).",
+      _doc: "mode='full_ai' reproduces the original behaviour byte for byte (emotion vector sets every channel, prosody_modulation then nudges). mode='hybrid' re-sources size / saturation / motion amplitude / motion speed from measured prosody, leaving shape, hue and lightness \u2014 the category- and valence-driven channels \u2014 with the classifier. Switchable so the two can be compared on identical clips.",
+      mode: "hybrid",
+      modes: [
+        "full_ai",
+        "hybrid"
+      ],
+      ai_channels: [
+        "shape",
+        "color.h",
+        "color.l"
+      ],
+      measured_channels: [
+        "size",
+        "color.s",
+        "motion.amplitude",
+        "motion.speed"
+      ],
+      _claim: "If the classifier is wrong, shape / hue / lightness are wrong. Size, saturation and motion still report the voice truthfully, because they never pass through the classifier.",
+      _default_doc: "Shipped default since the RAVDESS comparison (scripts/compare_rendering.py): the size channel separates strong from normal delivery at AUC .812 under hybrid vs .750 under full_ai (p<0.0001), and the gap widens to .833 vs .722 on the clips the classifier misreads (p=0.0048) \u2014 which is the case the split exists for. full_ai is kept switchable so the two can still be shown side by side."
+    },
+    measured_arousal: {
+      citation: "Acoustic correlates of arousal, in the order our own measurement ranks them: F0 level and range, then vocal intensity, then speech rate (Juslin & Laukka 2003 meta-analysis; Banse & Scherer 1996).",
+      _doc: "Weights and ranges were FITTED, not guessed. On all 480 RAVDESS clips (which carry a normal/strong emotional-intensity label in the filename) we measured how well each candidate separates the two. Single features: f0_mean .785, intensity .727, f0_range .678, speech_rate .600 AUC \u2014 jitter and shimmer scored .46, i.e. they do NOT track arousal, so they stay out of this composite and keep driving motion amplitude instead. The weighted composite below reaches .812.",
+      _relative_doc: "PRAAT intensity is measured in dB against the recording's own level, so it is a property of the MASTERING as much as of the voice: across RAVDESS actors the per-actor gain spread is 14.3 dB, larger than the 11.7 dB difference between normal and strong delivery. Absolute dB is therefore not trustworthy on its own. When the pipeline supplies a per-video reference every component is normalised as a deviation from it, which is also closer to how a listener hears loudness \u2014 relative to the speaker a moment ago. AUC .782 absolute \u2192 .812 with the reference.",
+      components: [
+        {
+          key: "f0_mean",
+          weight: 0.4,
+          abs_min: 90,
+          abs_max: 380,
+          rel_span: 60
+        },
+        {
+          key: "intensity_mean",
+          weight: 0.25,
+          abs_min: 0,
+          abs_max: 75,
+          rel_span: 15
+        },
+        {
+          key: "f0_range",
+          weight: 0.2,
+          abs_min: 60,
+          abs_max: 450,
+          rel_span: 120
+        },
+        {
+          key: "speech_rate_approx",
+          weight: 0.15,
+          abs_min: 25,
+          abs_max: 85,
+          rel_span: 10
+        }
+      ],
+      reference: {
+        _doc: "Running-median baseline built by backend/mapping/reference.py. Below min_segments there is not enough history to form one, so the mapping falls back to the absolute ranges. Kept identical in the batch and streaming paths so the same video never renders two ways.",
+        min_segments: 3
+      }
+    },
+    hybrid: {
+      _doc: "Channel formulas used only when rendering.mode == 'hybrid'. size and saturation follow measured arousal; motion amplitude follows measured vocal instability (jitter+shimmer); motion speed follows measured speech rate. motion.type stays with the classifier \u2014 it is categorical, like shape.",
+      size: {
+        base: 0.2,
+        gain: 0.7,
+        min: 0.2,
+        max: 0.95
+      },
+      saturation: {
+        base: 30,
+        gain: 60,
+        min: 25,
+        max: 95
+      },
+      motion: {
+        amplitude: {
+          base: 0.15,
+          gain: 0.75,
+          min: 0,
+          max: 1
+        },
+        speed: {
+          base: 0.15,
+          gain: 0.85,
+          min: 0,
+          max: 1.5
+        }
+      },
+      confidence: {
+        _doc: "In hybrid mode low confidence must NOT shrink or calm the glyph: size and motion are measurements and carry no classification error. Only the colour \u2014 which does pass through the classifier \u2014 is muted.",
+        attenuates: [
+          "color.s"
+        ]
+      }
+    }
+  };
+
   // extension/src/content.ts
   var API_BASE2 = "http://localhost:8000";
   var PREBUFFER_SEC = 4;
   var PAUSE_MARGIN = 0.25;
   var RESUME_MARGIN = 1;
+  var EMOTION_KO = {
+    anger: "\uBD84\uB178",
+    joy: "\uAE30\uC068",
+    surprise: "\uB180\uB78C",
+    sadness: "\uC2AC\uD514",
+    fear: "\uB450\uB824\uC6C0",
+    neutral: "\uC911\uB9BD",
+    sarcasm: "\uBE44\uAF3C",
+    resignation: "\uCCB4\uB150",
+    sincerity: "\uC9C4\uC2EC"
+  };
+  var LEGEND_ORDER = ["anger", "joy", "surprise", "sadness", "fear", "neutral"];
+  var HUES = mapping_config_default.color.hue_by_category;
+  function legendColor(category) {
+    if (category === "neutral" || HUES[category] == null) return "hsl(0 0% 60%)";
+    return `hsl(${HUES[category]} 75% 58%)`;
+  }
+  function buildColorKey() {
+    const root = document.createElement("div");
+    Object.assign(root.style, {
+      position: "absolute",
+      top: "12px",
+      left: "12px",
+      background: "rgba(0,0,0,.6)",
+      color: "#fff",
+      padding: "8px 10px",
+      borderRadius: "10px",
+      fontFamily: "system-ui, sans-serif",
+      fontSize: "12px",
+      lineHeight: "1.4",
+      maxWidth: "260px"
+    });
+    const now = document.createElement("div");
+    Object.assign(now.style, {
+      display: "flex",
+      alignItems: "center",
+      gap: "6px",
+      fontSize: "14px",
+      fontWeight: "700",
+      marginBottom: "6px"
+    });
+    const nowDot = document.createElement("span");
+    Object.assign(nowDot.style, {
+      width: "10px",
+      height: "10px",
+      borderRadius: "50%",
+      flex: "none",
+      transition: "background-color .6s ease"
+    });
+    const nowText = document.createElement("span");
+    now.append(nowDot, nowText);
+    const list = document.createElement("div");
+    Object.assign(list.style, {
+      display: "flex",
+      flexWrap: "wrap",
+      gap: "4px 10px",
+      opacity: ".85"
+    });
+    for (const cat of LEGEND_ORDER) {
+      const item = document.createElement("span");
+      Object.assign(item.style, {
+        display: "inline-flex",
+        alignItems: "center",
+        gap: "4px"
+      });
+      const dot = document.createElement("span");
+      Object.assign(dot.style, {
+        width: "8px",
+        height: "8px",
+        borderRadius: "50%",
+        background: legendColor(cat)
+      });
+      item.append(dot, document.createTextNode(EMOTION_KO[cat]));
+      list.appendChild(item);
+    }
+    root.append(now, list);
+    root.style.display = "none";
+    return {
+      root,
+      set(seg) {
+        const cat = seg.emotion?.category ?? "neutral";
+        const c = seg.visual.color;
+        nowDot.style.backgroundColor = c.s > 0 ? `hsl(${c.h} ${Math.max(c.s, 55)}% ${c.l}%)` : legendColor(cat);
+        const conf = seg.emotion?.category_confidence;
+        nowText.textContent = `\uC9C0\uAE08: ${EMOTION_KO[cat] ?? cat}` + (conf != null ? ` \xB7 \uD655\uC2E0 ${Math.round(conf * 100)}%` : "");
+        root.style.display = "";
+      }
+    };
+  }
   var session = null;
   function getVideoId() {
     return new URLSearchParams(location.search).get("v");
@@ -846,6 +1222,7 @@ void main(){
         start(btn);
       }
     });
+    if (!getVideoId()) btn.style.display = "none";
     document.body.appendChild(btn);
   }
   async function start(btn) {
@@ -913,6 +1290,8 @@ void main(){
     overlay.appendChild(canvas);
     overlay.appendChild(caption);
     overlay.appendChild(status);
+    const colorKey = buildColorKey();
+    overlay.appendChild(colorKey.root);
     player.appendChild(overlay);
     const field = createEmotionField(canvas, { transparent: true });
     const segs = [];
@@ -978,6 +1357,7 @@ void main(){
         });
         caption.textContent = segs[idx].speaker_changed ? `\u2014 ${segs[idx].text}` : segs[idx].text;
         if (idx !== lastIdx) {
+          colorKey.set(segs[idx]);
           field.pulse();
           lastIdx = idx;
           feedbackCtl.maybeShow(segs[idx].emotion?.feedback_id, document.body);
@@ -1077,6 +1457,7 @@ void main(){
       "soundshape-btn"
     );
     if (!btn) return;
+    btn.style.display = vid ? "" : "none";
     if (wasActive && vid) {
       btn.textContent = "\u2726 SoundShape \u2014 stop";
       void start(btn);

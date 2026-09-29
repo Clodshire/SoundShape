@@ -145,6 +145,66 @@ def derive_category(
     return SHORT_TO_LONG.get(model_label, "neutral")
 
 
+# ── Category correction from the voice itself ────────────────────────────
+# The trained classifier supplies the category, but on dramatic material
+# (trailers, dramas: shouting over music) it is often barely sure (0.25–0.45)
+# and names joy or sadness for lines the dimensional model and the prosody
+# plainly read as angry — e.g. a shouted "이놈!" came back as sadness. These
+# rules only step in against that kind of contradiction; a confident, agreeing
+# label is left alone. The model's own pick is kept as `category_model`.
+SHOUT_DB_ABOVE_BASELINE = 5.0  # louder than this speaker has been speaking
+SHOUT_F0_RATIO = 1.35  # and pitched well above their usual
+# Arousal saturates near +1 on loud, mastered audio, so "agitated" alone is
+# not enough — only an extreme, clearly unpleasant reading that the
+# classifier was unsure about overrides it.
+STRONG_AROUSAL = 0.9
+STRONG_NEGATIVE = -0.35
+UNSURE = 0.5
+
+
+def refine_category(
+    emotion: dict, prosody: Optional[dict], baseline: Optional[dict]
+) -> dict:
+    """Correct `emotion["category"]` in place when the voice contradicts it."""
+    cat = emotion.get("category", "neutral")
+    conf = float(emotion.get("category_confidence") or 0.0)
+    v = float(emotion.get("valence") or 0.0)
+    a = float(emotion.get("arousal") or 0.0)
+    d = emotion.get("dominance")
+
+    shouting = False
+    if prosody and baseline:
+        try:
+            shouting = (
+                prosody["intensity_mean"] - baseline["intensity_mean"]
+                >= SHOUT_DB_ABOVE_BASELINE
+                and prosody["f0_mean"] >= SHOUT_F0_RATIO * baseline["f0_mean"]
+            )
+        except (KeyError, TypeError):
+            shouting = False
+
+    new_cat, reason = cat, None
+    if shouting and a >= 0.3 and cat not in ("anger", "fear") and not (
+        cat == "joy" and conf >= 0.6
+    ):
+        # Much louder and higher than this speaker's norm: a shout.
+        new_cat, reason = "anger", "shouting"
+    elif (
+        a >= STRONG_AROUSAL
+        and v <= STRONG_NEGATIVE
+        and conf < UNSURE
+        and cat in ("joy", "sadness", "neutral", "surprise")
+    ):
+        new_cat = "anger" if (d is None or d >= 0) else "fear"
+        reason = "high_arousal_negative"
+
+    if reason:
+        emotion["category_model"] = cat
+        emotion["category"] = new_cat
+        emotion["category_rule"] = reason
+    return emotion
+
+
 @dataclass
 class EmotionResult:
     """Unified emotion output — matches the frontend's Emotion type."""

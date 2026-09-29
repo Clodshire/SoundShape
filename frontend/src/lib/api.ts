@@ -47,10 +47,11 @@ export async function processFile(
 }
 
 // ── Progressive streaming consumer ──────────────────────────────────────
-// Reads the NDJSON stream from POST /process/stream and fires callbacks as
+// Reads the NDJSON stream from POST /process/stream(/url) and fires callbacks as
 // each event arrives, so the UI can start playback after a short prebuffer.
 
 export interface StreamCallbacks {
+  onStatus?: (stage: string) => void; // e.g. "downloading" (URL ingest only)
   onMetadata?: (meta: Timeline["metadata"]) => void;
   onLanguage?: (language: string) => void;
   onSegment?: (segment: TimelineFrame) => void;
@@ -58,10 +59,14 @@ export interface StreamCallbacks {
   onError?: (message: string) => void;
 }
 
+export interface StreamOptions extends ProcessOptions {
+  signal?: AbortSignal; // abort the request (e.g. the user starts over)
+}
+
 export async function processFileStream(
   file: File,
   callbacks: StreamCallbacks,
-  opts: ProcessOptions = {},
+  opts: StreamOptions = {},
 ): Promise<void> {
   const form = new FormData();
   form.append("file", file);
@@ -71,7 +76,35 @@ export async function processFileStream(
   const res = await fetch(`${API_BASE}/process/stream`, {
     method: "POST",
     body: form,
+    signal: opts.signal,
   });
+  await readStream(res, callbacks);
+}
+
+// Same stream, but the backend fetches the audio itself (yt-dlp) — this is
+// the route the Chrome extension uses for YouTube pages.
+export async function processUrlStream(
+  url: string,
+  callbacks: StreamCallbacks,
+  opts: StreamOptions = {},
+): Promise<void> {
+  const form = new FormData();
+  form.append("url", url);
+  if (opts.language) form.append("language", opts.language);
+  if (opts.modelSize) form.append("model_size", opts.modelSize);
+
+  const res = await fetch(`${API_BASE}/process/stream/url`, {
+    method: "POST",
+    body: form,
+    signal: opts.signal,
+  });
+  await readStream(res, callbacks);
+}
+
+async function readStream(
+  res: Response,
+  callbacks: StreamCallbacks,
+): Promise<void> {
   if (!res.ok || !res.body) {
     throw new Error(`API ${res.status}: ${await res.text()}`);
   }
@@ -90,6 +123,9 @@ export async function processFileStream(
       return; // ignore partial/garbage line
     }
     switch (ev.type) {
+      case "status":
+        callbacks.onStatus?.(String(ev.stage ?? ""));
+        break;
       case "metadata":
         callbacks.onMetadata?.(ev as unknown as Timeline["metadata"]);
         break;

@@ -22,13 +22,32 @@ import yt_dlp
 MAX_DURATION_SEC = 900  # 15 minutes
 
 
+# YouTube now gates its streams behind a JavaScript challenge; without a JS
+# runtime yt-dlp intermittently gets HTTP 403. yt-dlp only enables deno by
+# default, so also allow node (already installed for the frontend). The
+# solver scripts come from the yt-dlp-ejs package (yt-dlp[default]).
+JS_RUNTIMES = {"deno": {}, "node": {}}
+
+# YouTube intermittently answers the web client's stream with HTTP 403 (it is
+# experimenting with binding a PO token to the video). The same request often
+# succeeds on a second try, and the mobile-web client is not affected — so
+# alternate between them before giving up. None = yt-dlp's default clients.
+DOWNLOAD_CLIENTS = (None, ["mweb"], None, ["mweb"])
+
+
 class TooLongError(RuntimeError):
     pass
 
 
 def probe_duration(url: str) -> Optional[float]:
     """Return the media duration in seconds without downloading."""
-    opts = {"quiet": True, "no_warnings": True, "noplaylist": True, "skip_download": True}
+    opts = {
+        "quiet": True,
+        "no_warnings": True,
+        "noplaylist": True,
+        "skip_download": True,
+        "js_runtimes": JS_RUNTIMES,
+    }
     with yt_dlp.YoutubeDL(opts) as ydl:
         info = ydl.extract_info(url, download=False)
     dur = info.get("duration") if isinstance(info, dict) else None
@@ -55,20 +74,33 @@ def download_audio(
             f"Video is {dur:.0f}s; limit is {max_duration_sec:.0f}s."
         )
 
-    opts = {
-        "format": "bestaudio/best",
-        "outtmpl": str(out_dir / "audio.%(ext)s"),
-        "quiet": True,
-        "no_warnings": True,
-        "noplaylist": True,
-    }
-    with yt_dlp.YoutubeDL(opts) as ydl:
-        ydl.download([url])
-
-    files = sorted(out_dir.glob("audio.*"))
-    if not files:
-        raise RuntimeError("yt-dlp produced no output file")
-    return files[0]
+    last_err: Optional[Exception] = None
+    for client in DOWNLOAD_CLIENTS:
+        opts = {
+            "format": "bestaudio/best",
+            "outtmpl": str(out_dir / "audio.%(ext)s"),
+            "quiet": True,
+            "no_warnings": True,
+            "noprogress": True,
+            "noplaylist": True,
+            "js_runtimes": JS_RUNTIMES,
+        }
+        if client:
+            opts["extractor_args"] = {"youtube": {"player_client": client}}
+        try:
+            with yt_dlp.YoutubeDL(opts) as ydl:
+                ydl.download([url])
+        except yt_dlp.utils.DownloadError as e:
+            last_err = e
+            for partial in out_dir.glob("audio.*"):
+                partial.unlink(missing_ok=True)
+            continue
+        files = sorted(out_dir.glob("audio.*"))
+        if files:
+            return files[0]
+    if last_err is not None:
+        raise last_err
+    raise RuntimeError("yt-dlp produced no output file")
 
 
 if __name__ == "__main__":
