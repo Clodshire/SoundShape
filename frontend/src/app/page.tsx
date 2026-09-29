@@ -48,6 +48,8 @@ import {
   type FeedbackConfig,
   PromptPacer,
   fetchFeedbackConfig,
+  ASK_CONSENT_EVERY_LOAD,
+  clearStoredConsent,
   getConsent,
 } from "@/lib/feedbackClient";
 
@@ -424,6 +426,10 @@ export default function Home() {
         cfg.max_prompts_per_video,
       );
     });
+    // Ask-every-load mode keeps its answer in memory, so drop anything an
+    // earlier build wrote — otherwise a stale "granted" would come back the
+    // moment the switch is flipped off.
+    if (ASK_CONSENT_EVERY_LOAD) clearStoredConsent();
     setFbConsent(getConsent());
     return () => {
       cancelled = true;
@@ -431,9 +437,18 @@ export default function Home() {
   }, []);
 
   // New media → the per-video prompt budget starts over.
+  //
+  // A consent card is the exception: it asks about the viewer, not about the
+  // clip, so loading a file must not yank it away mid-decision. The read is a
+  // ref so that answering consent does not itself re-run this effect.
+  const needsConsentRef = useRef(false);
+  useEffect(() => {
+    needsConsentRef.current = promptNeedsConsent;
+  }, [promptNeedsConsent]);
+
   useEffect(() => {
     pacerRef.current?.resetForNewVideo();
-    setActivePrompt(null);
+    setActivePrompt((cur) => (cur && needsConsentRef.current ? cur : null));
   }, [source.mediaUrl, source.label]);
 
   const currentFrame = useMemo(

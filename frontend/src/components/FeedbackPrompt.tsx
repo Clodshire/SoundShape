@@ -3,6 +3,7 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import {
   type FeedbackConfig,
+  ASK_CONSENT_EVERY_LOAD,
   setConsent,
   submitFeedback,
 } from "@/lib/feedbackClient";
@@ -27,6 +28,9 @@ interface Props {
  *    `display_seconds`; hovering pauses it. The same CSS animation both draws
  *    the bar and triggers dismissal (via `animationend`), so the visible
  *    countdown and the actual deadline can never disagree.
+ *
+ * The consent card is the exception to (2): it carries no countdown and stays
+ * until the viewer answers or closes it.
  */
 export function FeedbackPrompt({
   feedbackId,
@@ -72,7 +76,21 @@ export function FeedbackPrompt({
 
       {needsConsent ? (
         <div className="p-4">
-          <div className="text-sm font-medium">감정 인식을 함께 개선할까요?</div>
+          {/* Consent is a question put to the viewer, so it has no countdown:
+              it waits until they answer or close it. The question card below
+              may expire unanswered — ignoring it is a valid response — but a
+              consent decision that vanished on a timer would be no decision. */}
+          <div className="flex items-start justify-between gap-2">
+            <div className="text-sm font-medium">감정 인식을 함께 개선할까요?</div>
+            <button
+              type="button"
+              onClick={onClose}
+              aria-label="닫기"
+              className="-mr-1 -mt-1 shrink-0 rounded px-1.5 text-muted transition hover:text-ink"
+            >
+              ×
+            </button>
+          </div>
           <p className="mt-2 text-xs leading-relaxed text-muted">
             AI가 헷갈린 구간에서 가끔 짧게 여쭤봅니다. 답변은 정확도 개선에만
             쓰이며, <strong className="text-ink">음성은 저장하지 않고</strong>{" "}
@@ -94,8 +112,13 @@ export function FeedbackPrompt({
               사양할게요
             </button>
           </div>
+          {/* Says what actually happens. There is no settings screen to change
+              this in, and promising one the app does not have is worse than
+              saying nothing. */}
           <p className="mt-2 text-[10px] text-muted">
-            설정에서 언제든 바꿀 수 있습니다.
+            {ASK_CONSENT_EVERY_LOAD
+              ? "새로고침하면 다시 여쭤봅니다."
+              : "이 브라우저에 기억해 둡니다."}
           </p>
         </div>
       ) : answered ? (

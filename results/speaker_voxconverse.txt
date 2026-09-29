@@ -1,0 +1,56 @@
+
+── crixb ─────────────────────────────
+  RTTM: 발화 59개 · 화자 2명
+  파이프라인: 구간 85개
+  채점 60개 (겹침·무음으로 제외 24개)
+  실제 전환 13회 · 붙은 대시 11개 → 정밀도 100.0% · 재현율 84.6%
+  오탐 0 · 미탐 2
+    미탐 t=  55.2s (spk01→spk00) “Go on.”
+    미탐 t=  56.2s (spk00→spk01) “I asked a question.”
+
+── zrlyl ─────────────────────────────
+  RTTM: 발화 92개 · 화자 2명
+  파이프라인: 구간 197개
+  채점 169개 (겹침·무음으로 제외 27개)
+  실제 전환 14회 · 붙은 대시 12개 → 정밀도 75.0% · 재현율 64.3%
+  오탐 3 · 미탐 5
+    미탐 t=  21.6s (spk01→spk00) “Go ahead, Jeff.”
+    미탐 t=  22.4s (spk00→spk01) “If I may ask, sir, you said earlier”
+    미탐 t=  66.8s (spk01→spk00) “So, in one case, you're talking abou”
+    미탐 t= 180.6s (spk01→spk00) “The reporting is fake and I just wan”
+    미탐 t= 397.1s (spk01→spk00) “I do that.”
+    오탐 t= 402.8s (spk00→spk00) “And you're right about that, except ”
+    오탐 t= 477.5s (spk00→spk00) “I won. I won.”
+    오탐 t= 501.3s (spk00→spk00) “But I watched him yesterday working ”
+
+── ppgjx ─────────────────────────────
+  RTTM: 발화 71개 · 화자 2명
+  파이프라인: 구간 185개
+  채점 172개 (겹침·무음으로 제외 12개)
+  실제 전환 24회 · 붙은 대시 27개 → 정밀도 63.0% · 재현율 70.8%
+  오탐 10 · 미탐 7
+    오탐 t=  62.3s (spk01→spk01) “Sing them pictures.”
+    오탐 t=  67.0s (spk01→spk01) “Meanwhile, them dems are down to jus”
+    오탐 t=  83.6s (spk01→spk01) “It is...”
+    오탐 t=  86.4s (spk01→spk01) “It's, uh...”
+    오탐 t=  91.5s (spk01→spk01) “M-M-M-M-M-M-M-M-M-M.”
+    오탐 t=  94.1s (spk01→spk01) “Malamar, no, whatever.”
+    오탐 t= 127.2s (spk01→spk01) “And for the record, there will only ”
+    오탐 t= 141.7s (spk01→spk01) “This is just part of a social media ”
+    미탐 t= 307.5s (spk00→spk01) “As kindling?”
+    미탐 t= 353.5s (spk00→spk01) “Now because it's Twitter,”
+    오탐 t= 354.6s (spk01→spk01) “will you limit their answers to 140 ”
+    미탐 t= 372.6s (spk01→spk00) “Martin O'Malley.”
+    미탐 t= 425.2s (spk00→spk01) “Will you tell us any of the question”
+    미탐 t= 429.8s (spk01→spk00) “No.”
+    미탐 t= 431.8s (spk00→spk01) “How about questions you will not ask”
+
+==========================================================
+합계 · 클립 3개 · 채점 401개 (제외 63개)
+  실제 화자 전환 51회 · 붙은 대시 50개
+  정밀도 74.0% · 재현율 72.5% · 정확도 93.3%
+  오탐 13개 · 미탐 14개
+==========================================================
+
+보고서 문장:
+  "공개 데이터셋 VoxConverse 의 2인 대화 3편에서 전 과정을 검증했다. 자막 구간 401개 중 실제 화자 전환 51회를 기준으로 정밀도 74%, 재현율 73%였다 (오탐 13회)."

@@ -60,15 +60,48 @@ export async function submitFeedback(
 
 // ── consent ──────────────────────────────────────────────────────────
 
+/**
+ * Ask for consent on every page load instead of remembering the answer.
+ *
+ * `true` — the decision lives in memory only, so a refresh asks again. This is
+ * what a live demo needs: the card is the feature being shown, and it must
+ * appear for every person who walks up, without the presenter having to clear
+ * site data between them.
+ *
+ * `false` — the answer persists in localStorage, which is the right default
+ * for real viewers: nobody should be re-asked on every visit, and re-asking
+ * someone who declined is worse than not asking at all.
+ *
+ * Flip this one value to switch. Nothing else needs to change.
+ */
+export const ASK_CONSENT_EVERY_LOAD = true;
+
+/** Consent for this page load, when we are deliberately not remembering it. */
+let sessionConsent: Consent = "unset";
+
 export function getConsent(): Consent {
   if (typeof window === "undefined") return "unset";
+  if (ASK_CONSENT_EVERY_LOAD) return sessionConsent;
   const v = window.localStorage.getItem(CONSENT_KEY);
   return v === "granted" || v === "declined" ? v : "unset";
 }
 
 export function setConsent(value: Exclude<Consent, "unset">): void {
   if (typeof window === "undefined") return;
+  if (ASK_CONSENT_EVERY_LOAD) {
+    sessionConsent = value;
+    return;
+  }
   window.localStorage.setItem(CONSENT_KEY, value);
+}
+
+/**
+ * Forget a stored decision. Used when switching to ask-every-load so an answer
+ * saved by an earlier build does not keep the card hidden forever.
+ */
+export function clearStoredConsent(): void {
+  if (typeof window === "undefined") return;
+  window.localStorage.removeItem(CONSENT_KEY);
 }
 
 // ── pacing ───────────────────────────────────────────────────────────
