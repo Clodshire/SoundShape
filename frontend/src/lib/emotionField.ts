@@ -169,7 +169,7 @@ export function createEmotionField(
       const cy = H / 2;
       // Bigger, stronger glow so it reads clearly over a video (the fractal
       // detail needs WebGL; here we prioritize an unmistakable colored presence).
-      const R = Math.min(W, H) * (0.42 + 0.14 * cur.bright) * (1 + 0.18 * burst);
+      const R = Math.min(W, H) * (0.46 + 0.15 * cur.bright) * (1 + 0.12 * burst);
       const hue = Math.round(cur.hue);
       const sat = Math.round(Math.max(0.35, Math.min(1, cur.sat)) * 100);
       const light = Math.round(
@@ -431,13 +431,13 @@ function uniformsFor(v: FieldVisual): Uniforms {
   let elong: number;
   switch (m.type) {
     case "shake": // anger
-      turb = 0.95; contrast = 0.9; edgeTurb = 0.85; edgeFreq = 7; breathe = 0.35; elong = 1.05;
+      turb = 0.62; contrast = 0.9; edgeTurb = 0.55; edgeFreq = 5.5; breathe = 0.35; elong = 1.05;
       break;
     case "tremor": // fear
-      turb = 1.0; contrast = 0.8; edgeTurb = 0.95; edgeFreq = 9; breathe = 0.3; elong = 1.0;
+      turb = 0.66; contrast = 0.8; edgeTurb = 0.6; edgeFreq = 6.5; breathe = 0.3; elong = 1.0;
       break;
     case "pulse": // joy / surprise
-      turb = 0.5; contrast = 0.55; edgeTurb = 0.45; edgeFreq = 5; breathe = 0.85; elong = 1.05;
+      turb = 0.4; contrast = 0.55; edgeTurb = 0.36; edgeFreq = 4.5; breathe = 0.85; elong = 1.05;
       break;
     case "slow_drift": // sadness
       turb = 0.28; contrast = 0.32; edgeTurb = 0.2; edgeFreq = 2; breathe = 0.25; elong = 1.4;
@@ -448,9 +448,11 @@ function uniformsFor(v: FieldVisual): Uniforms {
     default: // still — neutral / sincerity
       turb = 0.2; contrast = 0.35; edgeTurb = 0.15; edgeFreq = 3; breathe = 0.35; elong = 1.1;
   }
-  turb *= 0.55 + m.amplitude * 0.6;
-  edgeTurb *= 0.5 + m.amplitude * 0.7;
-  const flow = 0.12 + m.speed * 0.6 + (m.type === "shake" || m.type === "tremor" ? 0.25 : 0);
+  // 흔들림은 감정을 전달하는 채널이지만, 너무 세면 형태 자체가 안 보인다.
+  // 유형 사이의 상대 차이(분노 > 기쁨 > 슬픔)는 유지하되 전체 진폭을 낮춘다.
+  turb *= 0.6 + m.amplitude * 0.4;
+  edgeTurb *= 0.55 + m.amplitude * 0.45;
+  const flow = 0.1 + m.speed * 0.38 + (m.type === "shake" || m.type === "tremor" ? 0.15 : 0);
   const bright = 0.55 + v.size * 0.7;
   const sharp = SHARPNESS_BY_SHAPE[v.shape] ?? 0.4;
   return {
@@ -592,8 +594,8 @@ void main(){
   // voice is steady.
   // Kept to a band rather than filling the frame: the caption sits below it and
   // the point is to be read alongside the picture, not to replace it.
-  float amp = (0.15 + u_bright * 0.24)
-            * (1.0 + 0.13 * u_breathe * sin(u_time * 1.5));
+  float amp = (0.19 + u_bright * 0.26)
+            * (1.0 + 0.09 * u_breathe * sin(u_time * 1.5));
   // edgeFreq already carries "how agitated" from the motion rules, so it maps
   // straight onto how tightly packed the wave is.
   float freq = 2.1 + u_edgeFreq * 0.75;

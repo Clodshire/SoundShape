@@ -69,14 +69,17 @@ export function isolate(
     case "shape":
       return { ...NEUTRAL, shape: v.shape };
     case "size":
-      return { ...NEUTRAL, size: 0.25 + 0.6 * intensity };
+      return { ...NEUTRAL, size: 0.35 + 0.6 * intensity };
     case "motion":
+      // 위쪽 끝을 낮췄다. 진폭 0.85·속도 1.1 에서는 형태가 뭉개져서
+      // "어느 쪽이 더 움직이나"가 아니라 "뭐가 보이긴 하나"를 묻는 문항이
+      // 됐다. 아래 위 차이는 남겨 두어 변별은 그대로 가능하다.
       return {
         ...NEUTRAL,
         motion: {
           type: v.motion.type,
-          amplitude: 0.15 + 0.7 * intensity,
-          speed: 0.2 + 0.9 * intensity,
+          amplitude: 0.15 + 0.45 * intensity,
+          speed: 0.2 + 0.55 * intensity,
         },
       };
   }

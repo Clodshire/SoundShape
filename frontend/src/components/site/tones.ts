@@ -12,11 +12,14 @@ export interface Tone {
   speed: number;
 }
 
+// 분노가 가장 빠르고 위로가 가장 느리다는 순서는 그대로 두되, 전체를 느리게
+// 잡았다. 예전 값(분노 0.8초)에서는 막대 하나가 0.18초마다 뛰어서 —
+// 눈이 따라가지 못하고 예시가 읽히지 않았다.
 export const TONES: Record<ToneId, Tone> = {
-  comfort: { id: "comfort", label: "위로", color: "#2F7A4D", speed: 2.6 },
-  anger: { id: "anger", label: "분노", color: "#D0402A", speed: 0.8 },
-  sarcasm: { id: "sarcasm", label: "비꼼", color: "#A66A12", speed: 1.6 },
-  resignation: { id: "resignation", label: "체념", color: "#5B5B66", speed: 2.2 },
+  comfort: { id: "comfort", label: "위로", color: "#2F7A4D", speed: 3.4 },
+  anger: { id: "anger", label: "분노", color: "#D0402A", speed: 1.9 },
+  sarcasm: { id: "sarcasm", label: "비꼼", color: "#A66A12", speed: 2.5 },
+  resignation: { id: "resignation", label: "체념", color: "#5B5B66", speed: 3.0 },
 };
 
 export const TONE_ORDER: ToneId[] = ["comfort", "anger", "sarcasm", "resignation"];
