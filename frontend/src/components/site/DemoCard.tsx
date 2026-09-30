@@ -3,7 +3,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { EmotionCanvas } from "@/components/EmotionCanvas";
 import { health, processFileStream, processUrlStream } from "@/lib/api";
-import { DEFAULT_RENDER_MODE, mapEmotionToVisual } from "@/lib/mapping";
+import { DEFAULT_RENDER_MODE, mapEmotionToVisual, type RenderMode } from "@/lib/mapping";
 import type { TimelineFrame } from "@/types/emotion";
 import styles from "./site.module.css";
 import { TONES, TONE_ORDER, hexToHsl, lineAt, toneForEmotion, type ToneId } from "./tones";
@@ -58,6 +58,7 @@ export function DemoCard() {
   const [serverUp, setServerUp] = useState<boolean | null>(null);
 
   const [mode, setMode] = useState<"ss" | "caption">("ss");
+  const [renderMode, setRenderMode] = useState<RenderMode>(DEFAULT_RENDER_MODE);
   const [follow, setFollow] = useState(true);
   const [manualTone, setManualTone] = useState<ToneId>("comfort");
   const [time, setTime] = useState(0);
@@ -263,7 +264,8 @@ export function DemoCard() {
       seg?.emotion ?? { category: "neutral", valence: 0, arousal: 0 },
       seg?.prosody,
       seg?.reference,
-      DEFAULT_RENDER_MODE,
+      renderMode,
+      undefined,
     );
     const conf = seg?.emotion?.confidence;
     return {
@@ -271,7 +273,11 @@ export function DemoCard() {
       color: toneHsl,
       uncertainty: conf == null ? 0 : Math.max(0, Math.min(1, 1 - conf / 0.85)),
     };
-  }, [last, segments, toneHsl]);
+  }, [last, segments, toneHsl, renderMode]);
+
+  // 하이브리드는 측정값이 없으면 AI 전용과 똑같이 동작한다. 차이가 없는데
+  // 토글을 보여 주면 "눌러도 아무 일도 안 난다"가 되므로 그때는 숨긴다.
+  const hasProsody = (last ?? segments[0])?.prosody != null;
 
   const isAudioFile = source?.kind === "file" && !source.isVideo;
   const togglePlay = useCallback(() => {
@@ -570,13 +576,48 @@ export function DemoCard() {
               </span>
             )}
             {isSS && (
-              <div className={styles.legend}>
-                {TONE_ORDER.map((id) => (
-                  <span key={id} className={styles.legendItem}>
-                    <span aria-hidden="true" className={styles.legendDot} style={{ backgroundColor: TONES[id].color }} />
-                    {TONES[id].label}
-                  </span>
-                ))}
+              <div className={styles.bottomRow}>
+                <div className={styles.bottomLeft}>
+                  {hasProsody && (
+                    <div
+                      className={styles.segMini}
+                      role="group"
+                      aria-label="렌더링 방식"
+                      title={
+                        renderMode === "hybrid"
+                          ? "크기·채도·움직임을 목소리에서 잰 값이 직접 그립니다"
+                          : "AI가 고른 감정 하나로 전부 그립니다"
+                      }
+                    >
+                      <button
+                        type="button"
+                        aria-pressed={renderMode === "hybrid"}
+                        onClick={() => setRenderMode("hybrid")}
+                        className={renderMode === "hybrid" ? styles.segMiniOn : styles.segMiniOff}
+                      >
+                        하이브리드
+                      </button>
+                      <button
+                        type="button"
+                        aria-pressed={renderMode === "full_ai"}
+                        onClick={() => setRenderMode("full_ai")}
+                        className={renderMode === "full_ai" ? styles.segMiniOn : styles.segMiniOff}
+                      >
+                        AI 전용
+                      </button>
+                    </div>
+                  )}
+                </div>
+                <div className={styles.bottomRight}>
+                  <div className={styles.legend}>
+                    {TONE_ORDER.map((id) => (
+                      <span key={id} className={styles.legendItem}>
+                        <span aria-hidden="true" className={styles.legendDot} style={{ backgroundColor: TONES[id].color }} />
+                        {TONES[id].label}
+                      </span>
+                    ))}
+                  </div>
+                </div>
               </div>
             )}
             {!done && (
