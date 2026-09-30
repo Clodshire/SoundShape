@@ -24,6 +24,29 @@ export const TONES: Record<ToneId, Tone> = {
 
 export const TONE_ORDER: ToneId[] = ["comfort", "anger", "sarcasm", "resignation"];
 
+// "#2F7A4D" → { h: 144, s: 44, l: 33 } — the emotion field takes HSL.
+export function hexToHsl(hex: string): { h: number; s: number; l: number } {
+  const n = parseInt(hex.replace("#", ""), 16);
+  const r = ((n >> 16) & 255) / 255;
+  const g = ((n >> 8) & 255) / 255;
+  const b = (n & 255) / 255;
+  const max = Math.max(r, g, b);
+  const min = Math.min(r, g, b);
+  const l = (max + min) / 2;
+  const d = max - min;
+  let h = 0;
+  let s = 0;
+  if (d > 0) {
+    s = d / (1 - Math.abs(2 * l - 1));
+    if (max === r) h = ((g - b) / d) % 6;
+    else if (max === g) h = (b - r) / d + 2;
+    else h = (r - g) / d + 4;
+    h *= 60;
+    if (h < 0) h += 360;
+  }
+  return { h: Math.round(h), s: Math.round(s * 100), l: Math.round(l * 100) };
+}
+
 // Backend emotion → one of the four tones.
 //
 // The models name more categories than the site shows (joy, sadness, fear,

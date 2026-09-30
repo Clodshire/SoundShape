@@ -4,6 +4,7 @@ import Link from "next/link";
 import { useEffect, useState } from "react";
 import { DemoCard } from "./DemoCard";
 import styles from "./site.module.css";
+import { TechProof } from "./TechProof";
 import { TONES, TONE_ORDER } from "./tones";
 import { Waveform } from "./Waveform";
 
@@ -94,6 +95,8 @@ export function SoundShapeSite({ fontClass }: { fontClass: string }) {
             </div>
           </div>
         </section>
+
+        <TechProof />
 
         <YouTubePreview />
 

@@ -1,10 +1,12 @@
 "use client";
 
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { EmotionCanvas } from "@/components/EmotionCanvas";
 import { health, processFileStream, processUrlStream } from "@/lib/api";
+import { DEFAULT_RENDER_MODE, mapEmotionToVisual } from "@/lib/mapping";
 import type { TimelineFrame } from "@/types/emotion";
 import styles from "./site.module.css";
-import { TONES, TONE_ORDER, lineAt, toneForEmotion, type ToneId } from "./tones";
+import { TONES, TONE_ORDER, hexToHsl, lineAt, toneForEmotion, type ToneId } from "./tones";
 import { Waveform } from "./Waveform";
 import { YouTubeStage } from "./YouTubeStage";
 
@@ -32,6 +34,12 @@ export function youTubeId(input: string): string | null {
     /* not a URL */
   }
   return null;
+}
+
+function fmtTime(s: number): string {
+  const m = Math.floor(s / 60);
+  const sec = Math.floor(s % 60);
+  return `${m}:${sec.toString().padStart(2, "0")}`;
 }
 
 function isVideoFile(f: File): boolean {
@@ -245,6 +253,70 @@ export function DemoCard() {
     return () => cancelAnimationFrame(raf);
   }, [playing, source]);
 
+  // ── Emotion field (the studio's WebGL renderer) for audio playback ──
+  // Shape, size and motion come from the real analysis of the line; the
+  // color is the site's tone color so the field, pill and legend agree.
+  const toneHsl = useMemo(() => hexToHsl(tone.color), [tone.color]);
+  const fieldVisual = useMemo(() => {
+    const seg = last ?? segments[0];
+    const base = mapEmotionToVisual(
+      seg?.emotion ?? { category: "neutral", valence: 0, arousal: 0 },
+      seg?.prosody,
+      seg?.reference,
+      DEFAULT_RENDER_MODE,
+    );
+    const conf = seg?.emotion?.confidence;
+    return {
+      ...base,
+      color: toneHsl,
+      uncertainty: conf == null ? 0 : Math.max(0, Math.min(1, 1 - conf / 0.85)),
+    };
+  }, [last, segments, toneHsl]);
+
+  const isAudioFile = source?.kind === "file" && !source.isVideo;
+  const togglePlay = useCallback(() => {
+    const el = mediaRef.current;
+    if (!el) return;
+    if (el.paused) void el.play();
+    else el.pause();
+  }, []);
+  const restart = useCallback(() => {
+    const el = mediaRef.current;
+    if (!el) return;
+    el.currentTime = 0;
+    setTime(0);
+    void el.play();
+  }, []);
+  const seekBy = useCallback((dt: number) => {
+    const el = mediaRef.current;
+    if (!el) return;
+    el.currentTime = Math.max(0, Math.min(el.duration || 0, el.currentTime + dt));
+    setTime(el.currentTime);
+  }, []);
+
+  // Same shortcuts as /studio: Space (or k) play/pause, ←/→ seek 1 s (5 s
+  // with Shift). Ignored while typing in a field.
+  useEffect(() => {
+    if (view !== "ready" || !isAudioFile) return;
+    const onKey = (e: KeyboardEvent) => {
+      const el = document.activeElement as HTMLElement | null;
+      if (el?.tagName === "INPUT" || el?.tagName === "TEXTAREA" || el?.isContentEditable) return;
+      if (e.metaKey || e.ctrlKey || e.altKey) return;
+      if (e.code === "Space" || e.key === "k") {
+        e.preventDefault();
+        togglePlay();
+      } else if (e.key === "ArrowRight") {
+        e.preventDefault();
+        seekBy(e.shiftKey ? 5 : 1);
+      } else if (e.key === "ArrowLeft") {
+        e.preventDefault();
+        seekBy(e.shiftKey ? -5 : -1);
+      }
+    };
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+  }, [view, isAudioFile, togglePlay, seekBy]);
+
   const overlay = (
     <div className={styles.overlay}>
       {isSS && (
@@ -437,39 +509,58 @@ export function DemoCard() {
               </div>
             ) : (
               <>
-                <div className={styles.glowStage}>
-                  <div
-                    aria-hidden="true"
-                    className={styles.glow}
-                    style={{
-                      backgroundColor: tone.color,
-                      opacity: isSS ? (current ? 0.85 : 0.45) : 0,
-                      animationDuration: `${tone.speed}s`,
-                    }}
-                  />
-                  <div className={styles.bigCaption} aria-live="polite">
+                <div className={styles.fieldStage}>
+                  {isSS && (
+                    <div
+                      className={styles.fieldBand}
+                      role="img"
+                      aria-label={`감정 파형 · ${tone.label}`}
+                    >
+                      <EmotionCanvas visual={fieldVisual} changedAt={last?.t ?? 0} transparent />
+                    </div>
+                  )}
+                  <div className={styles.fieldCaption} aria-live="polite">
                     {captionText || (!playing && time === 0 ? "재생을 눌러 시작하세요" : "")}
                   </div>
                 </div>
-                {isSS && (
-                  <Waveform
-                    tone={tone}
-                    analyser={analyser}
-                    speaking={!!current}
-                    playing={playing}
-                    width={200}
-                    height={60}
-                  />
-                )}
                 <audio
                   ref={(el) => {
                     mediaRef.current = el;
                   }}
                   src={source.url}
-                  controls
-                  className={styles.audio}
+                  preload="auto"
+                  hidden
                   {...mediaHandlers}
                 />
+                <div className={styles.playerRow}>
+                  <div className={styles.playerControls}>
+                    <button type="button" onClick={togglePlay} className={styles.playBtn}>
+                      <svg viewBox="0 0 12 12" width="12" height="12" fill="currentColor" aria-hidden="true">
+                        {playing ? (
+                          <>
+                            <rect x="2" y="1.5" width="3" height="9" rx="0.6" />
+                            <rect x="7" y="1.5" width="3" height="9" rx="0.6" />
+                          </>
+                        ) : (
+                          <path d="M2.5 1.6 10.2 6 2.5 10.4Z" />
+                        )}
+                      </svg>
+                      {playing ? "일시정지" : "재생"}
+                    </button>
+                    <button type="button" onClick={restart} className={styles.restartBtn}>
+                      <svg viewBox="0 0 12 12" width="14" height="14" fill="none" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+                        <path d="M10 6a4 4 0 1 1-1.3-2.95" />
+                        <path d="M10.2 1.4v2.6H7.6" />
+                      </svg>
+                      처음부터
+                    </button>
+                    <span className={styles.clock}>
+                      {fmtTime(time)}
+                      <span className={styles.clockTotal}> / {fmtTime(duration)}</span>
+                    </span>
+                  </div>
+                  <span className={styles.keyHelp}>스페이스 = 재생·정지 · ← → = 이동</span>
+                </div>
               </>
             )}
 
