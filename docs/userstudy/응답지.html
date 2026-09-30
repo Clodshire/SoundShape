@@ -49,9 +49,12 @@
 </p>
 
 <script>
+// 놀람(😲)은 뺐다. 매핑에서 기쁨과 같은 모양(expanding_burst)에 색상이 5° 차이라
+// 화면에서 구분되지 않는다. 정답이 될 수 없는 보기로 남겨 두면, 참가자가 우리
+// 시각 언어의 한계 때문에 틀린 것으로 채점된다. 우연 수준은 1/5 = 20%.
 const EMO = [
   ["😊", "기쁨"], ["😡", "화남"], ["😨", "공포"], ["😢", "슬픔"],
-  ["😲", "놀람"], ["😐", "감정 없음"], ["❓", "모름"],
+  ["😐", "감정 없음"], ["❓", "모름"],
 ];
 const TONE = new Set([7, 8, 9]);
 
@@ -72,7 +75,7 @@ for (let i = 1; i <= 12; i++) {
   if (TONE.has(i)) {
     body += `<tr class="tone">
       <td class="lab">${i}번</td>
-      <td colspan="7" class="opt">
+      <td colspan="6" class="opt">
         <span class="e">😊</span> 진심 &nbsp;&nbsp;☐ &nbsp;&nbsp;&nbsp;&nbsp;
         <span class="e">😏</span> 비꼼 &nbsp;&nbsp;☐
       </td>

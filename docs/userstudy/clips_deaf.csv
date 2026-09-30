@@ -1,15 +1,15 @@
-clip_id,true_emotion,incongruent,music,sentence,source_note
-P1,happy,no,no,내일 소풍 간대.,연습 — 채점 안 함
-P2,sad,no,no,이제 못 봐.,연습 — 채점 안 함
-1,sad,no,no,이제 안 와.,
-2,angry,no,no,지금 뭐라고 했어.,
-3,happy,no,no,내일 만나기로 했어.,
-4,afraid,no,no,저기 누가 있어.,
-5,surprised,no,no,벌써 왔어?,
-6,neutral,no,no,여덟 시에 시작해.,
-7,sad,yes,no,난 괜찮아.,억눌린 슬픔
-8,angry,yes,no,아주 잘했네.,비꼼 — 칭찬하는 말을 이 악물고
-9,angry,yes,no,정말 고마워.,비꼼 — 고맙다는 말을 차갑게
-10,sad,no,yes,다 끝났어.,배경 음악
-11,angry,no,yes,알았다고.,배경 음악
-12,neutral,no,no,책상 위에 뒀어.,
+clip_id,true_emotion,incongruent,music,tag,sentence,source_note
+P1,happy,no,no,기쁨,내일 소풍 간대.,연습 — 채점 안 함
+P2,sad,no,no,슬픔,이제 못 봐.,연습 — 채점 안 함
+1,sad,no,no,슬픔,이제 안 와.,
+2,angry,no,no,분노,지금 뭐라고 했어.,
+3,happy,no,no,기쁨,내일 만나기로 했어.,
+4,afraid,no,no,공포,저기 누가 있어.,
+5,happy,no,no,기쁨,벌써 왔어?,놀람에서 교체 — 매핑상 기쁨과 구분 불가
+6,neutral,no,no,중립,여덟 시에 시작해.,
+7,sad,yes,no,슬픔,난 괜찮아.,억눌린 슬픔
+8,angry,yes,no,비꼼,아주 잘했네.,비꼼 — 칭찬하는 말
+9,angry,yes,no,비꼼,정말 고마워.,비꼼 — 고맙다는 말
+10,sad,no,no,슬픔,다 끝났어.,
+11,afraid,no,no,공포,문이 열려 있어.,분노에서 교체 — 분포 균형
+12,neutral,no,no,중립,책상 위에 뒀어.,
