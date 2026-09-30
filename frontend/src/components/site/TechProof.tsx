@@ -31,9 +31,9 @@ const METRICS: { label: string; value: string; note: string; basis: string }[] =
   },
   {
     label: "화자 전환 감지",
-    value: "AUC 0.958",
-    note: "모듈 단위",
-    basis: "RAVDESS 발화 4,000쌍 기준",
+    value: "정밀도 74%",
+    note: "전 과정 · 모듈 단위로는 AUC 0.958",
+    basis: "VoxConverse 2인 대화 3편 · 채점 401구간 · 실제 전환 51회",
   },
 ];
 
@@ -150,14 +150,17 @@ export function TechProof() {
           <ul className={styles.limitsList}>
             <li>
               <strong>개인 캘리브레이션</strong>과 <strong>저확신 학습 루프</strong>는 기능은
-              만들었지만, 아직 참가자·라벨 데이터가 0건이라 효과를 측정하지 못했어요.
+              만들었지만, 참가자와 응답이 아직 너무 적어 효과를 측정하지 못했어요.
             </li>
             <li>
-              <strong>햅틱 채널</strong>은 부품만 확보한 상태로, 아직 구현하지 않았어요.
+              <strong>햅틱 채널</strong>은 책상 위에서 진동까지 확인했지만, 아직 손목에 차는
+              밴드 형태는 아니에요.
             </li>
             <li>
-              <strong>화자 전환 감지</strong>는 모듈 단위로만 검증했어요(AUC 0.958). 자막과
-              결합한 전체 파이프라인에서는 아직 검증하지 못해 기본값은 꺼져 있어요.
+              <strong>화자 전환 감지</strong>는 공개 데이터셋으로 전 과정을 재 봤더니 정밀도가
+              74%였어요. 네 번에 한 번은 틀린 표시라는 뜻이고, 없는 정보를 만들어내지 않는 것을
+              더 중요하게 봤기 때문에 기본값은 꺼 두었어요. 모듈 단위 성능(AUC 0.958)과 이만큼
+              차이가 난다는 것이, 부분 성능만 보고 기능을 켜면 안 되는 이유예요.
             </li>
             <li>
               <strong>한국어 정확도</strong>는 화자 정보가 없는 데이터로 측정해, 같은 화자가
