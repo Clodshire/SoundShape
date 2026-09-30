@@ -255,8 +255,16 @@ export function DemoCard() {
   }, [playing, source]);
 
   // ── Emotion field (the studio's WebGL renderer) for audio playback ──
-  // Shape, size and motion come from the real analysis of the line; the
-  // color is the site's tone color so the field, pill and legend agree.
+  // Shape, size and motion come from the real analysis of the line. Hue and
+  // lightness are the site's tone colour so the field, pill and legend read as
+  // the same colour — but SATURATION comes from the mapping, because that is
+  // one of the three channels hybrid rendering re-sources from the measured
+  // voice. Pinning it to the tone's own saturation hid the difference the
+  // 하이브리드 / AI 전용 toggle exists to show.
+  //
+  // Floored at 30: the mapping returns 0 for the neutral category (grey by
+  // design), and a grey field next to a green pill looks like a bug rather
+  // than a reading.
   const toneHsl = useMemo(() => hexToHsl(tone.color), [tone.color]);
   const fieldVisual = useMemo(() => {
     const seg = last ?? segments[0];
@@ -270,7 +278,7 @@ export function DemoCard() {
     const conf = seg?.emotion?.confidence;
     return {
       ...base,
-      color: toneHsl,
+      color: { h: toneHsl.h, s: Math.max(30, base.color.s), l: toneHsl.l },
       uncertainty: conf == null ? 0 : Math.max(0, Math.min(1, 1 - conf / 0.85)),
     };
   }, [last, segments, toneHsl, renderMode]);
