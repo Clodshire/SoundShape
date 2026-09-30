@@ -386,36 +386,98 @@ input.srOnly:focus-visible + .dropButtons label {
   align-items: center;
   gap: 18px;
 }
-.glowStage {
+/* Audio result: the studio's emotion field on a light stage (21:9 band),
+   caption under the waveform, studio-style transport below. */
+.fieldStage {
   position: relative;
   width: 100%;
-  min-height: 170px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
+  aspect-ratio: 21 / 9;
+  min-height: 220px;
+  background: #f3f1ec;
+  border-radius: 12px;
+  overflow: hidden;
 }
-.glow {
+.fieldBand {
   position: absolute;
-  width: 220px;
-  height: 220px;
-  border-radius: 50%;
-  filter: blur(40px);
-  animation: ss-pulse 2.6s ease-in-out infinite;
-  transition: background-color 1.6s ease-in-out, opacity 0.5s ease;
+  left: 0;
+  right: 0;
+  bottom: 30%;
+  height: 44%;
+  pointer-events: none;
 }
-.bigCaption {
-  position: relative;
+.fieldCaption {
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: 10%;
+  padding: 0 24px;
+  text-align: center;
   font-weight: 700;
-  font-size: 32px;
+  font-size: 30px;
   line-height: 1.35;
   letter-spacing: -0.01em;
-  text-align: center;
-  max-width: 560px;
-  min-height: 1.35em;
+  color: var(--ink);
 }
-.audio {
+.playerRow {
   width: 100%;
-  max-width: 480px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px 16px;
+  flex-wrap: wrap;
+}
+.playerControls {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  flex-wrap: wrap;
+}
+.playBtn,
+.restartBtn {
+  cursor: pointer;
+  min-height: 44px;
+  box-sizing: border-box;
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
+  padding: 0 20px;
+  border-radius: 999px;
+  font-family: inherit;
+  font-weight: 500;
+  font-size: 14px;
+}
+.playBtn {
+  background: var(--ink);
+  color: #ffffff;
+  border: 1px solid var(--ink);
+}
+.restartBtn {
+  background: #ffffff;
+  color: var(--body);
+  border: 1px solid var(--line-strong);
+}
+.restartBtn:hover {
+  color: var(--ink);
+  border-color: #b9b9c2;
+}
+.playBtn:focus-visible,
+.restartBtn:focus-visible {
+  outline: 3px solid #2f6fd0;
+  outline-offset: 2px;
+}
+.clock {
+  font-family: var(--font-plex-mono), monospace;
+  font-size: 14px;
+  font-variant-numeric: tabular-nums;
+  color: var(--ink);
+}
+.clockTotal {
+  color: var(--muted);
+}
+.keyHelp {
+  font-family: var(--font-plex-mono), monospace;
+  font-size: 11px;
+  color: var(--muted);
 }
 .videoFrame {
   position: relative;
@@ -1184,8 +1246,12 @@ input.srOnly:focus-visible + .dropButtons label {
   .card {
     padding: 28px 16px;
   }
-  .bigCaption {
-    font-size: 24px;
+  .fieldCaption {
+    font-size: 22px;
+    padding: 0 12px;
+  }
+  .keyHelp {
+    display: none;
   }
   .overlay {
     bottom: 44px;
@@ -1254,7 +1320,6 @@ input.srOnly:focus-visible + .dropButtons label {
 }
 
 @media (prefers-reduced-motion: reduce) {
-  .glow,
   .previewGlow,
   .barAnimated,
   .spinner {
