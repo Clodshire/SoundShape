@@ -1,0 +1,67 @@
+{
+ "1": {
+  "text": "이제 안 와.",
+  "tag": "슬픔",
+  "src": "/stimuli/1.mp4"
+ },
+ "2": {
+  "text": "지금 뭐라고 했어.",
+  "tag": "분노",
+  "src": "/stimuli/2.mp4"
+ },
+ "3": {
+  "text": "내일 만나기로 했어.",
+  "tag": "기쁨",
+  "src": "/stimuli/3.mp4"
+ },
+ "4": {
+  "text": "저기 누가 있어.",
+  "tag": "공포",
+  "src": "/stimuli/4.mp4"
+ },
+ "5": {
+  "text": "벌써 왔어?",
+  "tag": "기쁨",
+  "src": "/stimuli/5.mp4"
+ },
+ "6": {
+  "text": "여덟 시에 시작해.",
+  "tag": "중립",
+  "src": "/stimuli/6.mp4"
+ },
+ "7": {
+  "text": "난 괜찮아.",
+  "tag": "슬픔",
+  "src": "/stimuli/7.mp4"
+ },
+ "8": {
+  "text": "아주 잘했네.",
+  "tag": "비꼼",
+  "src": "/stimuli/8.mp4"
+ },
+ "9": {
+  "text": "정말 고마워.",
+  "tag": "비꼼",
+  "src": "/stimuli/9.mp4"
+ },
+ "10": {
+  "text": "다 끝났어.",
+  "tag": "슬픔",
+  "src": "/stimuli/10.mp4"
+ },
+ "11": {
+  "text": "문이 열려 있어.",
+  "tag": "공포",
+  "src": "/stimuli/11.mp4"
+ },
+ "12": {
+  "text": "책상 위에 뒀어.",
+  "tag": "중립",
+  "src": "/stimuli/12.mp4"
+ },
+ "example": {
+  "text": "내일 소풍 간대.",
+  "tag": "기쁨",
+  "src": "/stimuli/example.mp4"
+ }
+}
