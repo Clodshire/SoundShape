@@ -40,8 +40,13 @@ export default function Stimulus() {
   const [clip, setClip] = useState<Clip | null>(null);
   const [showSS, setShowSS] = useState(false);
 
+  const [tile, setTile] = useState<string | null>(null);
+
   useEffect(() => {
     const q = new URLSearchParams(window.location.search);
+    // ?tag=분노 — 영상 없이 그 감정의 필드만 그린다 (보고서 도판용).
+    const tag = q.get("tag");
+    if (tag) { setTile(tag); setShowSS(true); return; }
     const id = q.get("clip") ?? "1";
     const ss = q.get("ss") !== "0";
     setShowSS(ss);
@@ -84,6 +89,7 @@ export default function Stimulus() {
     };
   }, [clip]);
 
+  if (tile) return <Tile tag={tile} />;
   if (!clip) return <div style={{ background: "#000", width: "100vw", height: "100vh" }} />;
 
   return (
@@ -143,6 +149,39 @@ export default function Stimulus() {
         }}
       >
         {clip.text}
+      </div>
+    </div>
+  );
+}
+
+/** 감정 하나의 필드만 그리는 타일. 보고서의 "감정 매핑 엔진" 도판에 쓴다. */
+function Tile({ tag }: { tag: string }) {
+  const ref = useRef<HTMLCanvasElement>(null);
+  useEffect(() => {
+    if (!ref.current) return;
+    const f = createEmotionField(ref.current, { transparent: true });
+    f.setVisual(mapEmotionToVisual(TAG_TO_EMOTION[tag] ?? TAG_TO_EMOTION.중립));
+    const w = window as typeof window & { __stim?: Record<string, unknown> };
+    w.__stim = { ready: true, renderer: f.renderer };
+    return () => f.destroy();
+  }, [tag]);
+
+  return (
+    <div
+      style={{
+        position: "fixed", inset: 0, background: "#0B0B0D",
+        display: "flex", flexDirection: "column",
+        alignItems: "center", justifyContent: "center", gap: 18,
+        fontFamily: '"Pretendard", "Apple SD Gothic Neo", system-ui, sans-serif',
+      }}
+    >
+      {/* 개발 배지가 도판에 찍힌다 */}
+      <style>{`nextjs-portal{display:none!important}`}</style>
+      {/* 비율을 제품과 같은 약 5:1 로. 정사각형에 가까우면 형태가 커지면서
+          가운데가 흰색으로 날아가 색상이 사라진다. */}
+      <canvas ref={ref} style={{ width: "82%", height: "26%" }} />
+      <div style={{ color: "#fff", fontSize: 54, fontWeight: 800, letterSpacing: "-0.02em" }}>
+        {tag}
       </div>
     </div>
   );

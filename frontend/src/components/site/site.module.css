@@ -412,6 +412,7 @@ input.srOnly:focus-visible + .dropButtons label {
   bottom: 10%;
   padding: 0 24px;
   text-align: center;
+  font-family: var(--font-pretendard), "Pretendard", system-ui, sans-serif;
   font-weight: 700;
   font-size: clamp(17px, 2.6vw, 24px);
   line-height: 1.35;
@@ -562,6 +563,9 @@ input.srOnly:focus-visible + .dropButtons label {
   position: relative;
   width: 100%;
   text-align: center;
+  /* 자막은 Pretendard 로 둔다. 스튜디오·크롬 확장과 같은 글자꼴이어야 하고,
+     이 폰트는 CDN 이 아니라 저장소에 들어 있어 행사장 wifi 에 기대지 않는다. */
+  font-family: var(--font-pretendard), "Pretendard", system-ui, sans-serif;
   font-weight: 700;
   font-size: clamp(14px, 2.1vw, 19px);
   line-height: 1.35;
