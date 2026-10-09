@@ -54,7 +54,7 @@ export function SoundShapeSite({ fontClass }: { fontClass: string }) {
           <div className={styles.featureGrid}>
             <div className={styles.feature}>
               <div className={styles.dotRow}>
-                {(["comfort", "anger", "sarcasm"] as const).map((id) => (
+                {(["joy", "sadness", "anger", "fear", "sarcasm", "neutral"] as const).map((id) => (
                   <span key={id} aria-hidden="true" className={styles.featureDot} style={{ background: TONES[id].color }} />
                 ))}
               </div>

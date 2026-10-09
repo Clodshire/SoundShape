@@ -1,9 +1,15 @@
 import type { Emotion, TimelineFrame } from "@/types/emotion";
 
-// The four tones of the public site (디자인 목업에서 확정된 체계).
-// `speed` is the base animation period in seconds: anger fast and rough,
-// comfort slow and soft. The waveform bars multiply it per bar.
-export type ToneId = "comfort" | "anger" | "sarcasm" | "resignation";
+// 공개 페이지의 범례. **색은 `config/mapping_config.json` 에서 계산한 값**이고,
+// 실제로 화면에 그려지는 색과 같아야 한다. 예전에는 위로·분노·비꼼·체념 네 가지로
+// 따로 꾸며 두어, 범례의 초록·주황이 렌더러가 그리는 노랑·청록과 달랐다 —
+// 범례를 보고 화면을 읽는 사람에게는 그게 그냥 틀린 설명이다.
+//
+//   기쁨  50°  · 슬픔 220° · 분노   0°
+//   공포 270°  · 비꼼 200° · 중립  무채색
+//
+// `speed` 는 애니메이션 주기(초)다. 각성이 높은 감정일수록 짧게 잡았다.
+export type ToneId = "joy" | "sadness" | "anger" | "fear" | "sarcasm" | "neutral";
 
 export interface Tone {
   id: ToneId;
@@ -12,17 +18,18 @@ export interface Tone {
   speed: number;
 }
 
-// 분노가 가장 빠르고 위로가 가장 느리다는 순서는 그대로 두되, 전체를 느리게
-// 잡았다. 예전 값(분노 0.8초)에서는 막대 하나가 0.18초마다 뛰어서 —
-// 눈이 따라가지 못하고 예시가 읽히지 않았다.
 export const TONES: Record<ToneId, Tone> = {
-  comfort: { id: "comfort", label: "위로", color: "#2F7A4D", speed: 3.4 },
-  anger: { id: "anger", label: "분노", color: "#D0402A", speed: 1.9 },
-  sarcasm: { id: "sarcasm", label: "비꼼", color: "#A66A12", speed: 2.5 },
-  resignation: { id: "resignation", label: "체념", color: "#5B5B66", speed: 3.0 },
+  joy: { id: "joy", label: "기쁨", color: "#E4C840", speed: 2.1 },
+  sadness: { id: "sadness", label: "슬픔", color: "#375DA9", speed: 3.4 },
+  anger: { id: "anger", label: "분노", color: "#C61515", speed: 1.9 },
+  fear: { id: "fear", label: "공포", color: "#7019C8", speed: 2.0 },
+  sarcasm: { id: "sarcasm", label: "비꼼", color: "#298EC0", speed: 2.6 },
+  neutral: { id: "neutral", label: "감정 없음", color: "#8C8C8C", speed: 3.6 },
 };
 
-export const TONE_ORDER: ToneId[] = ["comfort", "anger", "sarcasm", "resignation"];
+export const TONE_ORDER: ToneId[] = [
+  "joy", "sadness", "anger", "fear", "sarcasm", "neutral",
+];
 
 // "#2F7A4D" → { h: 144, s: 44, l: 33 } — the emotion field takes HSL.
 export function hexToHsl(hex: string): { h: number; s: number; l: number } {
@@ -47,30 +54,30 @@ export function hexToHsl(hex: string): { h: number; s: number; l: number } {
   return { h: Math.round(h), s: Math.round(s * 100), l: Math.round(l * 100) };
 }
 
-// Backend emotion → one of the four tones.
+// 백엔드 감정 → 범례의 여섯 가지.
 //
-// The models name more categories than the site shows (joy, sadness, fear,
-// surprise, neutral…) and none of them predicts sarcasm directly, so this is
-// the single place where that gap is bridged:
-//   · 분노 — an angry/disgusted voice whose (text-fused) valence stays negative.
-//   · 비꼼 — an angry-sounding voice over positive words (valence > 0.2 after
-//     text fusion): "괜찮아" said through the teeth. Also the backend's own
-//     "sarcasm" label, should a future classifier emit it.
-//   · 체념 — sadness, fear, resignation, and flat-negative neutral speech.
-//   · 위로 — everything warm or calm.
+// 모델이 내는 범주는 이보다 많고(놀람·체념·진심 등) 비꼼은 직접 예측하지 않는다.
+// 그 간극을 메우는 곳이 여기 한 군데다.
+//   · 비꼼 — 화난 목소리인데 (텍스트 보정 후) 정서가가 양수인 경우.
+//            "괜찮아" 를 이 악물고 말하는 것.
+//   · 놀람 — 매핑에서 기쁨과 같은 모양·거의 같은 색이라 기쁨으로 합친다.
+//            화면에서 구분되지 않는 것을 범례에서만 나누면 거짓말이 된다.
+//   · 체념·진심 — 각각 슬픔·기쁨 쪽으로 보낸다.
 export function toneForEmotion(e: Emotion | undefined): ToneId {
-  if (!e) return "comfort";
+  if (!e) return "neutral";
   const c = e.category as string;
   const v = e.valence ?? 0;
   const a = e.arousal ?? 0;
   if (c === "sarcasm") return "sarcasm";
   if (c === "anger" || c === "disgust") return v > 0.2 ? "sarcasm" : "anger";
-  if (c === "sadness" || c === "fear" || c === "resignation") return "resignation";
-  if (c === "surprise") return v < -0.1 ? "sarcasm" : "comfort";
-  // joy · sincerity · neutral — fall back to the V/A position.
+  if (c === "fear") return "fear";
+  if (c === "sadness" || c === "resignation") return "sadness";
+  if (c === "joy" || c === "surprise" || c === "sincerity") return "joy";
+  // neutral — V/A 위치로 떨어뜨린다.
   if (v < -0.1 && a > 0.35) return "anger";
-  if (v < -0.1) return "resignation";
-  return "comfort";
+  if (v < -0.1) return "sadness";
+  if (v > 0.25 && a > 0.25) return "joy";
+  return "neutral";
 }
 
 // At time t (seconds): the line being spoken (null between lines) and the

@@ -7,7 +7,6 @@ import { DEFAULT_RENDER_MODE, mapEmotionToVisual, type RenderMode } from "@/lib/
 import type { TimelineFrame } from "@/types/emotion";
 import styles from "./site.module.css";
 import { TONES, TONE_ORDER, hexToHsl, lineAt, toneForEmotion, type ToneId } from "./tones";
-import { Waveform } from "./Waveform";
 import { YouTubeStage } from "./YouTubeStage";
 
 type Stage = "idle" | "analyzing" | "ready" | "error";
@@ -60,7 +59,7 @@ export function DemoCard() {
   const [mode, setMode] = useState<"ss" | "caption">("ss");
   const [renderMode, setRenderMode] = useState<RenderMode>(DEFAULT_RENDER_MODE);
   const [follow, setFollow] = useState(true);
-  const [manualTone, setManualTone] = useState<ToneId>("comfort");
+  const [manualTone, setManualTone] = useState<ToneId>("neutral");
   const [time, setTime] = useState(0);
   const [playing, setPlaying] = useState(false);
   const [dragOver, setDragOver] = useState(false);
@@ -190,7 +189,7 @@ export function DemoCard() {
   const toneId: ToneId = follow
     ? last
       ? toneForEmotion(last.emotion)
-      : "comfort"
+      : "neutral"
     : manualTone;
   const tone = TONES[toneId];
   const isSS = mode === "ss";
@@ -332,29 +331,24 @@ export function DemoCard() {
   }, [view, isAudioFile, togglePlay, seekBy]);
 
   const overlay = (
-    <div className={styles.overlay}>
-      {isSS && (
-        <div className={styles.overlayTag}>
-          <span className={styles.dot} style={{ backgroundColor: tone.color }} />
-          <span>AI가 읽은 감정 · {tone.label}</span>
-        </div>
-      )}
+    <>
+      <div className={styles.overlayScrim} aria-hidden="true" />
+      <div className={styles.overlay}>
       <div className={styles.overlayLine}>
         {isSS && (
           <div className={styles.overlayWave}>
-            <Waveform
-              tone={tone}
-              analyser={source?.kind === "file" ? analyser : null}
-              speaking={!!current}
-              playing={playing}
-            />
+            {/* 영상에도 **실제 렌더러**를 쓴다. 예전에는 막대 14개를 CSS 로
+                흔드는 장식을 띄웠는데, 그것은 분석 결과가 아니라 그림이었고
+                화면에서도 토막토막 끊겨 보였다. */}
+            <EmotionCanvas visual={fieldVisual} changedAt={last?.t ?? 0} transparent />
           </div>
         )}
         <span className={styles.overlayCaption} aria-live="polite">
           {captionText}
         </span>
       </div>
-    </div>
+      </div>
+    </>
   );
 
   return (
