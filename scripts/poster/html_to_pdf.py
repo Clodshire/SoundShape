@@ -29,6 +29,8 @@ CHROME = "/Applications/Google Chrome.app/Contents/MacOS/Google Chrome"
 PAPERS = {
     "a0": (33.110, 46.811), "a1": (23.386, 33.110), "a2": (16.535, 23.386),
     "a3": (11.693, 16.535), "a4": (8.268, 11.693),
+    # 16:9 슬라이드 — 구글 슬라이드·파워포인트 기본 크기
+    "slide": (7.5, 13.333),
 }
 
 

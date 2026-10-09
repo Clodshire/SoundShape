@@ -1,0 +1,141 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<title>SoundShape 연구 설명 슬라이드</title>
+<style>
+  @page { size: 13.333in 7.5in; margin: 0; }
+  :root { --ink:#111; --dim:#6b6b6b; --line:#d8d8d8; --accent:#D0402A; }
+  * { box-sizing: border-box; }
+  body {
+    margin:0; background:#fff; color:var(--ink);
+    font-family:"Apple SD Gothic Neo","Noto Sans KR",system-ui,sans-serif;
+  }
+  .s {
+    width:13.333in; height:7.5in; padding:0.8in 1in;
+    page-break-after:always; position:relative;
+    display:flex; flex-direction:column; justify-content:center;
+  }
+  .s:last-child { page-break-after:auto; }
+  .n { position:absolute; top:0.5in; right:0.7in; font-size:15px; color:#bbb; }
+  h1 { font-size:62px; margin:0 0 .35in; line-height:1.18; letter-spacing:-1px; }
+  h2 { font-size:44px; margin:0 0 .3in; line-height:1.25; }
+  p  { font-size:30px; line-height:1.55; margin:0 0 .18in; }
+  .big { font-size:40px; font-weight:800; line-height:1.4; }
+  .dim { color:var(--dim); }
+  .ac  { color:var(--accent); font-weight:800; }
+
+  .steps { display:flex; gap:.3in; margin-top:.2in; }
+  .step {
+    flex:1; border:3px solid var(--line); border-radius:14px;
+    padding:.26in .22in; text-align:center;
+  }
+  .step .k { font-size:40px; font-weight:800; color:var(--accent); }
+  .step .t { font-size:26px; font-weight:700; margin-top:.08in; }
+  .step .d { font-size:19px; color:var(--dim); margin-top:.06in; }
+
+  .legend { display:flex; gap:.34in; margin-top:.25in; }
+  .lg { flex:1; text-align:center; }
+  .dot { width:88px; height:88px; border-radius:50%; margin:0 auto .12in; }
+  .lg .t { font-size:28px; font-weight:800; }
+
+  .rules { margin-top:.1in; }
+  .rule { display:flex; align-items:baseline; gap:.2in; margin-bottom:.19in; }
+  .rule .m { font-size:34px; width:.5in; text-align:center; }
+  .rule .x { font-size:31px; line-height:1.4; }
+
+  .center { text-align:center; }
+  .kicker { font-size:24px; font-weight:800; color:var(--accent);
+            letter-spacing:3px; margin-bottom:.18in; }
+</style>
+</head>
+<body>
+
+<!-- 1 ─ 표지 -->
+<section class="s center">
+  <div class="kicker">오늘 하는 것</div>
+  <h1>자막에 <span class="ac">말투</span>를 더하면<br>감정이 더 잘 보일까요?</h1>
+  <p class="dim" style="font-size:27px">약 30분 · 영상을 보고 느낀 감정을 고르시면 됩니다</p>
+</section>
+
+<!-- 2 ─ 연구 목표 -->
+<section class="s">
+  <div class="n">1 / 6</div>
+  <h2>왜 이 연구를 하나요</h2>
+  <p>자막은 <b>무슨 말을 했는지</b>는 알려 줍니다.</p>
+  <p>그런데 <b>어떤 말투였는지</b>는 알려 주지 않습니다.</p>
+  <div class="big" style="margin-top:.3in">
+    같은 <span class="ac">“괜찮아”</span> 도<br>
+    위로일 수도, 화일 수도, 비꼼일 수도 있습니다.
+  </div>
+  <p class="dim" style="margin-top:.3in">
+    그 말투를 <b>색과 모양</b>으로 보여 주면 도움이 되는지 알아봅니다.
+  </p>
+</section>
+
+<!-- 3 ─ 만든 것 -->
+<section class="s">
+  <div class="n">2 / 6</div>
+  <h2>저희가 만든 것</h2>
+  <p>목소리를 분석해서 <b>자막 위에 색과 모양</b>을 띄웁니다.</p>
+  <div class="legend">
+    <div class="lg"><div class="dot" style="background:#E53935"></div><div class="t">화남</div></div>
+    <div class="lg"><div class="dot" style="background:#3F6FD8"></div><div class="t">슬픔</div></div>
+    <div class="lg"><div class="dot" style="background:#E8C02A"></div><div class="t">기쁨</div></div>
+    <div class="lg"><div class="dot" style="background:#8E5BD0"></div><div class="t">공포</div></div>
+    <div class="lg"><div class="dot" style="background:#2BAFC4"></div><div class="t">비꼼</div></div>
+    <div class="lg"><div class="dot" style="background:#9E9E9E"></div><div class="t">감정 없음</div></div>
+  </div>
+  <p class="dim" style="margin-top:.3in">
+    더 <b>크고 많이 움직일수록</b> 더 강한 감정입니다.
+  </p>
+</section>
+
+<!-- 4 ─ 오늘 순서 -->
+<section class="s">
+  <div class="n">3 / 6</div>
+  <h2>오늘 순서</h2>
+  <div class="steps">
+    <div class="step"><div class="k">1</div><div class="t">연습</div><div class="d">영상 2개<br>적지 않습니다</div></div>
+    <div class="step"><div class="k">2</div><div class="t">영상 12개</div><div class="d">보고 나서<br>감정 고르기</div></div>
+    <div class="step"><div class="k">3</div><div class="t">비교</div><div class="d">두 화면 중<br>어느 쪽이 나은지</div></div>
+    <div class="step"><div class="k">4</div><div class="t">설문</div><div class="d">어땠는지<br>알려 주세요</div></div>
+  </div>
+  <p class="dim" style="margin-top:.35in">
+    앞의 <b>6개</b>와 뒤의 <b>6개</b>는 화면이 다릅니다. 그 차이를 보는 연구입니다.
+  </p>
+</section>
+
+<!-- 5 ─ 답하는 법 -->
+<section class="s">
+  <div class="n">4 / 6</div>
+  <h2>이렇게 답해 주세요</h2>
+  <div class="rules">
+    <div class="rule"><div class="m">①</div><div class="x">영상이 끝나면 <b>번호를 불러 드립니다.</b> 그 줄에 표시하세요.</div></div>
+    <div class="rule"><div class="m">②</div><div class="x">감정은 <b>하나만</b> 고르세요.</div></div>
+    <div class="rule"><div class="m">③</div><div class="x">오른쪽 칸은 <b>얼마나 확실한지</b> 입니다. 왼쪽이 “찍었다”, 오른쪽이 “확실하다”.</div></div>
+    <div class="rule"><div class="m">④</div><div class="x">노란 줄이 있는 번호는 <b>진심인지 비꼼인지</b>도 표시하세요.</div></div>
+  </div>
+</section>
+
+<!-- 6 ─ 약속 -->
+<section class="s">
+  <div class="n">5 / 6</div>
+  <h2>네 가지만 기억해 주세요</h2>
+  <div class="rules">
+    <div class="rule"><div class="m">🚫</div><div class="x"><b>시험이 아닙니다.</b> 맞고 틀리고를 보지 않습니다.</div></div>
+    <div class="rule"><div class="m">❓</div><div class="x"><b>“모름”을 고르셔도 괜찮습니다.</b> 틀린 답이 아닙니다.</div></div>
+    <div class="rule"><div class="m">▶</div><div class="x">영상은 <b>한 번만</b> 보여 드립니다.</div></div>
+    <div class="rule"><div class="m">✋</div><div class="x">힘드시면 <b>언제든 쉬거나 그만두실 수 있습니다.</b></div></div>
+  </div>
+</section>
+
+<!-- 7 ─ 시작 -->
+<section class="s center">
+  <div class="n">6 / 6</div>
+  <h1>그럼 시작하겠습니다</h1>
+  <p class="dim" style="font-size:28px">먼저 연습 2개를 보겠습니다. 적지 않으셔도 됩니다.</p>
+</section>
+
+</body>
+</html>
