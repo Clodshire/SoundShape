@@ -58,6 +58,7 @@ export function DemoCard() {
 
   const [mode, setMode] = useState<"ss" | "caption">("ss");
   const [renderMode, setRenderMode] = useState<RenderMode>(DEFAULT_RENDER_MODE);
+  const [showConf, setShowConf] = useState(true);
   const [follow, setFollow] = useState(true);
   const [manualTone, setManualTone] = useState<ToneId>("neutral");
   const [time, setTime] = useState(0);
@@ -330,9 +331,20 @@ export function DemoCard() {
     return () => window.removeEventListener("keydown", onKey);
   }, [view, isAudioFile, togglePlay, seekBy]);
 
+  // 크롬 확장이 영상 왼쪽 위에 띄우는 것과 **같은 문구·같은 값**이다.
+  //   지금: {감정} · 확신 {N}%
+  const conf = last?.emotion?.confidence;
+
   const overlay = (
     <>
       <div className={styles.overlayScrim} aria-hidden="true" />
+      {isSS && showConf && (
+        <div className={styles.confBadge}>
+          <span className={styles.confDot} style={{ backgroundColor: tone.color }} />
+          지금: {tone.label}
+          {conf != null && ` · 확신 ${Math.round(conf * 100)}%`}
+        </div>
+      )}
       <div className={styles.overlay}>
       <div className={styles.overlayLine}>
         {isSS && (
@@ -609,6 +621,15 @@ export function DemoCard() {
                       </button>
                     </div>
                   )}
+                  <button
+                    type="button"
+                    aria-pressed={showConf}
+                    onClick={() => setShowConf((v) => !v)}
+                    className={showConf ? styles.segMiniOn : styles.segMiniOff}
+                    title="영상 왼쪽 위에 분류기의 확신도를 표시합니다"
+                  >
+                    확신도
+                  </button>
                 </div>
                 <div className={styles.bottomRight}>
                   <div className={styles.legend}>

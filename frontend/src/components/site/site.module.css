@@ -514,15 +514,16 @@ input.srOnly:focus-visible + .dropButtons label {
   left: 0;
   right: 0;
   bottom: 0;
-  height: 46%;
+  height: 42%;
   pointer-events: none;
-  /* 어둠이 위쪽까지 올라와야 한다. 아래만 진하게 깔면 자막은 읽히는데
-     그 위의 감정 필드는 그대로 묻힌다(실측 알파 0.17). */
+  /* 필드가 있는 위쪽까지 닿되, 영상 자체를 가리지 않을 만큼만.
+     아래만 진하게 깔면 자막은 읽히는데 필드는 묻히고(실측 알파 0.17),
+     너무 진하면 정작 보여 줘야 할 화면이 사라진다. */
   background: linear-gradient(
     to top,
-    rgba(0, 0, 0, 0.8) 0%,
-    rgba(0, 0, 0, 0.72) 55%,
-    rgba(0, 0, 0, 0.45) 85%,
+    rgba(0, 0, 0, 0.5) 0%,
+    rgba(0, 0, 0, 0.42) 55%,
+    rgba(0, 0, 0, 0.26) 85%,
     rgba(0, 0, 0, 0) 100%
   );
 }
@@ -553,12 +554,14 @@ input.srOnly:focus-visible + .dropButtons label {
    스튜디오(약 5:1)에 맞춘다 — 지나치게 납작하면 형태가 작아진다. */
 .overlayWave {
   position: relative;
-  width: 62%;
-  min-width: 180px;
-  height: 46px;
+  width: 70%;
+  min-width: 220px;
+  height: 76px;
 }
 .overlayCaption {
   position: relative;
+  width: 100%;
+  text-align: center;
   font-weight: 700;
   font-size: clamp(14px, 2.1vw, 19px);
   line-height: 1.35;
@@ -1403,4 +1406,32 @@ input.srOnly:focus-visible + .dropButtons label {
   .bottomRow { flex-direction: column; align-items: stretch; gap: 10px; }
   .bottomLeft, .bottomRight { flex: 0 0 auto; justify-content: center; }
   .bottomRight .legend { justify-content: center; }
+}
+
+/* ── 왼쪽 위 확신도 (크롬 확장과 같은 값) ── */
+/* 크롬 확장(extension/src/content.ts)의 값을 그대로 가져왔다.
+   두 화면에서 같은 것이 같게 보여야 한다. */
+.confBadge {
+  position: absolute;
+  top: 12px;
+  left: 12px;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 8px 10px;
+  border-radius: 10px;
+  background: rgba(0, 0, 0, 0.6);
+  color: #fff;
+  font-size: 14px;
+  font-weight: 700;
+  line-height: 1.4;
+  max-width: 260px;
+  pointer-events: none;
+}
+.confDot {
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+  flex: none;
+  transition: background-color 0.6s ease;
 }
