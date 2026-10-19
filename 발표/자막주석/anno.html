@@ -1,0 +1,53 @@
+<!DOCTYPE html>
+<html lang="ko"><head><meta charset="utf-8">
+<style>
+  html,body{margin:0;padding:0;width:1920px;height:1080px;background:transparent;overflow:hidden}
+  .stage{position:relative;width:1920px;height:1080px;
+    font-family:"Pretendard","Apple SD Gothic Neo","Noto Sans KR",system-ui,sans-serif}
+  .b{position:absolute;background:#fff;border:4px solid #E01B1B;border-radius:16px;
+     padding:16px 26px;font-size:38px;font-weight:800;color:#141414;white-space:nowrap;
+     letter-spacing:-0.02em;box-shadow:0 10px 30px rgba(0,0,0,.35)}
+  svg{position:absolute;inset:0;width:1920px;height:1080px;overflow:visible}
+  .a{stroke:#E01B1B;stroke-width:9;fill:none;stroke-linecap:round;
+     filter:drop-shadow(0 3px 7px rgba(0,0,0,.45))}
+  .h{fill:#E01B1B;filter:drop-shadow(0 3px 7px rgba(0,0,0,.45))}
+</style></head>
+<body><div class="stage" id="s"></div>
+<script>
+// 말풍선 하나 + 화살표 하나. 화살표는 베지어로 살짝 휘게 그린다.
+const A = {
+  // ── 웹 데모 ──────────────────────────────────────────────
+  1: {t:"지금 감정과 확신도", bx:70,  by:92,
+      p:"M 400 182 C 445 196, 452 206, 470 219", tip:[482,228], ang:40},
+  2: {t:"목소리를 그린 도형", bx:1498, by:404,
+      p:"M 1486 470 C 1300 500, 1180 508, 1046 512", tip:[1016,512], ang:180},
+  3: {t:"끄고 켜기",          bx:1436, by:22,
+      p:"M 1424 62 C 1330 66, 1270 60, 1168 56", tip:[1140,55], ang:182},
+  4: {t:"색이 뜻하는 감정",   bx:1452, by:952,
+      p:"M 1540 944 C 1500 926, 1448 906, 1398 896", tip:[1368,890], ang:192},
+  // ── 유튜브 확장 ─────────────────────────────────────────
+  5: {t:"유튜브에서 그대로",  bx:360,  by:286,
+      p:"M 420 278 C 372 244, 324 212, 286 192", tip:[258,176], ang:208},
+  6: {t:"감정이 바뀌면 색도 바뀝니다", bx:826, by:252,
+      p:"M 960 330 C 920 452, 820 548, 724 596", tip:[698,612], ang:152},
+};
+const q = +(new URLSearchParams(location.search).get("n") || 1);
+const a = A[q];
+const s = document.getElementById("s");
+
+const b = document.createElement("div");
+b.className = "b"; b.textContent = a.t;
+b.style.left = a.bx + "px"; b.style.top = a.by + "px";
+s.appendChild(b);
+
+// 화살촉은 꼭짓점 좌표와 각도로 직접 그린다 — marker 는 회전이 번거롭다.
+const [x, y] = a.tip, r = a.ang * Math.PI / 180, L = 34, W = 15;
+const pt = (d, o) => [
+  x - L * Math.cos(r) * d + o * W * Math.sin(r),
+  y - L * Math.sin(r) * d - o * W * Math.cos(r),
+];
+const [ax, ay] = pt(1,  1), [cx, cy] = pt(1, -1);
+s.insertAdjacentHTML("beforeend",
+  `<svg><path class="a" d="${a.p}"/>` +
+  `<polygon class="h" points="${x},${y} ${ax},${ay} ${cx},${cy}"/></svg>`);
+</script></body></html>
