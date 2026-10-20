@@ -1,0 +1,17 @@
+<!DOCTYPE html><html lang="ko"><head><meta charset="utf-8"><style>
+ html,body{margin:0;width:1920px;height:1080px;background:transparent;overflow:hidden}
+ .w{position:absolute;left:38px;top:34px;display:inline-flex;align-items:center;gap:14px;
+    padding:16px 30px;border-radius:999px;background:rgba(12,12,14,.88);
+    box-shadow:0 10px 28px rgba(0,0,0,.4);
+    font-family:"Pretendard","Apple SD Gothic Neo","Noto Sans KR",system-ui,sans-serif}
+ .n{color:#fff;background:#D0402A;width:44px;height:44px;border-radius:50%;
+    display:flex;align-items:center;justify-content:center;font-size:26px;font-weight:800}
+ .t{color:#fff;font-size:34px;font-weight:800;letter-spacing:-.02em;white-space:nowrap}
+</style></head><body><div class="w"><div class="n" id="n"></div><div class="t" id="t"></div></div>
+<script>
+const L={1:"영상 고르기",2:"웹사이트에서 재생",3:"다른 영상도 그대로",4:"크롬 확장 — 유튜브에서"};
+const q=new URLSearchParams(location.search);
+const k=+(q.get("n")||1);
+if(q.get("x"))document.querySelector(".w").style.left=q.get("x")+"px";
+n.textContent=k; t.textContent=L[k];
+</script></body></html>
