@@ -70,3 +70,6 @@ build/
 # Local screen recordings (large, not part of the repo history)
 *.mov
 
+
+# 연출 대본 소재 — 원본 녹화를 변환해 둔 것이라 저장소에 넣지 않는다.
+frontend/public/stimuli/*.mp4
