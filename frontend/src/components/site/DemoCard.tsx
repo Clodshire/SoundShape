@@ -4,6 +4,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { EmotionCanvas } from "@/components/EmotionCanvas";
 import { health, processFileStream, processUrlStream } from "@/lib/api";
 import { DEFAULT_RENDER_MODE, mapEmotionToVisual, type RenderMode } from "@/lib/mapping";
+import { buildTimelineFromScript } from "@/lib/scriptMode";
 import type { TimelineFrame } from "@/types/emotion";
 import styles from "./site.module.css";
 import { TONES, TONE_ORDER, hexToHsl, lineAt, toneForEmotion, type ToneId } from "./tones";
@@ -174,6 +175,39 @@ export function DemoCard() {
       setStage("error");
     }
   }, [startFile]);
+
+  // 연출 대본 재생 — `?script=<키>` 로 `/stimuli/<키>.srt` + `.mp4` 를 띄운다.
+  //
+  // 백엔드를 아예 거치지 않는다. 시연 영상을 찍을 때 모델 출력을 쓸 수 없기
+  // 때문이다: 2~3초 발화에서 한국어 모델의 확신도 중앙값은 38%이고, 50%를
+  // 넘긴 구간은 대본 문장 다섯 개가 전부 오답이었다.
+  //
+  // **여기 보이는 감정과 확신도는 .srt 에 사람이 적은 값이다.** 화면을 설명하기
+  // 위한 연출이고 모델 성능의 근거가 아니다. 성능은 교차검증 결과를 쓸 것.
+  const startScript = useCallback(async (key: string) => {
+    try {
+      const res = await fetch(`/stimuli/${key}.srt`);
+      if (!res.ok) throw new Error(String(res.status));
+      const { timeline, totalDuration } = buildTimelineFromScript(await res.text());
+      if (!timeline.length) throw new Error("대본에서 자막을 찾지 못했습니다");
+      setSource({ kind: "file", url: `/stimuli/${key}.mp4`, name: `${key}.mp4`, isVideo: true });
+      setSegments(timeline);
+      setDuration(totalDuration);
+      setAnalyzedUntil(totalDuration);
+      setDone(true);
+      setMode("ss");
+      setFollow(true);
+      setStage("ready");
+    } catch (e) {
+      setError(`연출 대본을 불러오지 못했어요 (${e instanceof Error ? e.message : e}).`);
+      setStage("error");
+    }
+  }, []);
+
+  useEffect(() => {
+    const key = new URLSearchParams(window.location.search).get("script");
+    if (key) void startScript(key);
+  }, [startScript]);
 
   const reset = useCallback(() => {
     abortRef.current?.abort();

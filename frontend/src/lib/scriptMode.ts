@@ -77,8 +77,19 @@ export function parseScriptSrt(srt: string): ScriptCue[] {
     let emotion = DEFAULT_EMOTION;
     const tagMatch = text.match(/^\[\s*([^\]]+?)\s*\]\s*/);
     if (tagMatch) {
+      // `[비꼼]` 또는 `[비꼼 71]` / `[비꼼 0.71]` — 뒤의 숫자는 화면에 띄울 확신도.
+      // 배지뿐 아니라 매핑에도 넘어가므로, 낮게 적으면 제품과 똑같이 색이 흐려진다.
       const tag = tagMatch[1].trim();
-      emotion = TAG_TO_EMOTION[tag] ?? TAG_TO_EMOTION[tag.toLowerCase()] ?? DEFAULT_EMOTION;
+      const withConf = tag.match(/^(.*?)[\s|,]+(\d{1,3}(?:\.\d+)?)\s*%?$/);
+      const name = (withConf ? withConf[1] : tag).trim();
+      emotion = TAG_TO_EMOTION[name] ?? TAG_TO_EMOTION[name.toLowerCase()] ?? DEFAULT_EMOTION;
+      if (withConf) {
+        const n = Number(withConf[2]);
+        // 1 보다 크면 퍼센트로 적은 것으로 본다. 0~1 을 벗어나면 잘라낸다.
+        if (Number.isFinite(n)) {
+          emotion = { ...emotion, confidence: Math.min(1, Math.max(0, n > 1 ? n / 100 : n)) };
+        }
+      }
       text = text.slice(tagMatch[0].length).trim(); // strip the tag from the caption
     }
     cues.push({ t: start, duration: Math.max(0.1, end - start), text, emotion });
