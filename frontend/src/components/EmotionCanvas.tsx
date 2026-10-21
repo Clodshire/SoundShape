@@ -10,6 +10,10 @@ interface Props {
   changedAt: number;
   // When true, output per-pixel alpha so the field glows over a <video>.
   transparent?: boolean;
+  // Cut to each new visual instead of easing into it. Set it where the clip
+  // cuts between speakers: a colour that slides across the cut looks like one
+  // person changing their mind rather than a different person starting.
+  snap?: boolean;
 }
 
 /**
@@ -17,7 +21,7 @@ interface Props {
  * (`@/lib/emotionField`). The same renderer powers the Chrome-extension overlay,
  * so visuals are identical everywhere. See emotionField.ts for the shader.
  */
-export function EmotionCanvas({ visual, changedAt, transparent = false }: Props) {
+export function EmotionCanvas({ visual, changedAt, transparent = false, snap = false }: Props) {
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const fieldRef = useRef<EmotionFieldHandle | null>(null);
 
@@ -42,8 +46,9 @@ export function EmotionCanvas({ visual, changedAt, transparent = false }: Props)
 
   // Push the latest visual every render.
   useEffect(() => {
+    if (snap) fieldRef.current?.snap();
     fieldRef.current?.setVisual(visual);
-  }, [visual]);
+  }, [visual, snap]);
 
   // Flash on segment/emotion change.
   useEffect(() => {

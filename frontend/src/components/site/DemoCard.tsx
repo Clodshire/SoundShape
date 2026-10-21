@@ -417,7 +417,12 @@ export function DemoCard() {
             {/* 영상에도 **실제 렌더러**를 쓴다. 예전에는 막대 14개를 CSS 로
                 흔드는 장식을 띄웠는데, 그것은 분석 결과가 아니라 그림이었고
                 화면에서도 토막토막 끊겨 보였다. */}
-            <EmotionCanvas visual={fieldVisual} changedAt={last?.t ?? 0} transparent />
+            <EmotionCanvas
+                visual={fieldVisual}
+                changedAt={last?.t ?? 0}
+                transparent
+                snap={vividRender}
+              />
           </div>
         )}
         <span className={styles.overlayCaption} aria-live="polite">
@@ -602,7 +607,12 @@ export function DemoCard() {
                       role="img"
                       aria-label={`감정 파형 · ${tone.label}`}
                     >
-                      <EmotionCanvas visual={fieldVisual} changedAt={last?.t ?? 0} transparent />
+                      <EmotionCanvas
+                visual={fieldVisual}
+                changedAt={last?.t ?? 0}
+                transparent
+                snap={vividRender}
+              />
                     </div>
                   )}
                   <div className={styles.fieldCaption} aria-live="polite">

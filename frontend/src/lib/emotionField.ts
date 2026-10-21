@@ -42,6 +42,15 @@ export interface FieldVisual {
 
 export interface EmotionFieldHandle {
   setVisual(visual: FieldVisual): void;
+  /**
+   * Land on the next visual in one frame instead of easing into it.
+   *
+   * The easing exists because a voice slides between states and the field
+   * should slide with it. A cut between speakers is not that: the next line is
+   * a different person, and a colour that drifts across the cut reads as one
+   * emotion changing its mind. Call this on the frame the speaker changes.
+   */
+  snap(): void;
   setTransparent(transparent: boolean): void;
   pulse(strength?: number): void;
   destroy(): void;
@@ -100,6 +109,8 @@ export function createEmotionField(
     motion: { type: "still", amplitude: 0, speed: 0 },
   };
   let burst = 0;
+  // 다음 프레임만 이징을 건너뛴다 (snap()).
+  let snapPending = false;
   let raf: number | null = null;
   let pendingCapture: ((c: HTMLCanvasElement) => void) | null = null;
 
@@ -151,7 +162,8 @@ export function createEmotionField(
         return;
       }
       const t = uniformsFor(visual);
-      const ease = 0.08;
+      const ease = snapPending ? 1 : 0.08;
+      snapPending = false;
       cur.hue = lerpHue(cur.hue, t.hue, ease);
       cur.sat += (t.sat - cur.sat) * ease;
       cur.light += (t.light - cur.light) * ease;
@@ -196,6 +208,9 @@ export function createEmotionField(
       capture: async () => null,
       setVisual(v: FieldVisual) {
         visual = v;
+      },
+      snap() {
+        snapPending = true;
       },
       setTransparent(x: boolean) {
         transparent = x;
@@ -299,7 +314,10 @@ export function createEmotionField(
 
     const b = burst;
     burst *= Math.pow(0.05, dt);
-    const ease = Math.min(0.9, 1 - Math.pow(0.25, dt) + Math.min(0.6, b) * 0.08);
+    const ease = snapPending
+      ? 1
+      : Math.min(0.9, 1 - Math.pow(0.25, dt) + Math.min(0.6, b) * 0.08);
+    snapPending = false;
 
     cur.hue = lerpHue(cur.hue, target.hue, ease);
     cur.sat += (target.sat - cur.sat) * ease;
@@ -359,6 +377,9 @@ export function createEmotionField(
     setVisual(v: FieldVisual) {
       visual = v;
     },
+    snap() {
+      snapPending = true;
+    },
     setTransparent(t: boolean) {
       transparent = t;
     },
@@ -393,6 +414,7 @@ function noopHandle(): EmotionFieldHandle {
     renderer: "none",
     capture: async () => null,
     setVisual() {},
+    snap() {},
     setTransparent() {},
     pulse() {},
     destroy() {},
