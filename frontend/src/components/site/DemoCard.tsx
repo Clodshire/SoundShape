@@ -5,6 +5,7 @@ import { EmotionCanvas } from "@/components/EmotionCanvas";
 import { health, processFileStream, processUrlStream } from "@/lib/api";
 import { DEFAULT_RENDER_MODE, mapEmotionToVisual, type RenderMode } from "@/lib/mapping";
 import { buildTimelineFromScript } from "@/lib/scriptMode";
+import { connectBand, disconnectBand, haptikSupported, playEmotion } from "@/lib/haptic";
 import type { TimelineFrame } from "@/types/emotion";
 import styles from "./site.module.css";
 import { TONES, TONE_ORDER, hexToHsl, lineAt, toneForEmotion, type ToneId } from "./tones";
@@ -61,6 +62,8 @@ export function DemoCard() {
   // 연출 대본의 이름. 심사위원이 "지금 몇 번째를 보고 있는지" 알 수 있게
   // 화면과 탭 제목에 같이 띄운다.
   const [demoLabel, setDemoLabel] = useState("");
+  // 손목 밴드. 브라우저가 Web Serial 을 지원할 때만 버튼이 나온다.
+  const [band, setBand] = useState(false);
 
   const [mode, setMode] = useState<"ss" | "caption">("ss");
   const [renderMode, setRenderMode] = useState<RenderMode>(DEFAULT_RENDER_MODE);
@@ -347,6 +350,20 @@ export function DemoCard() {
         conf == null ? 0 : uScale * Math.max(0, Math.min(1, 1 - conf / 0.85)),
     };
   }, [last, segments, toneHsl, renderMode, vividRender]);
+
+  // 줄이 바뀔 때마다 손목에 그 감정의 리듬을 보낸다. 화면과 같은 값에서
+  // 갈라져 나오므로, 보는 것과 느끼는 것이 어긋나지 않는다.
+  const beat = last?.t ?? -1;
+  useEffect(() => {
+    if (!band || beat < 0) return;
+    const e = last?.emotion;
+    if (e) playEmotion(e.category, e.confidence ?? 1);
+    // last 는 매 프레임 새 객체가 될 수 있어서, 줄이 바뀌는 beat 로만 건다.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [band, beat]);
+
+  // 탭을 닫거나 다른 영상으로 넘어갈 때 밴드가 계속 울면 안 된다.
+  useEffect(() => () => { void disconnectBand(); }, []);
 
   // 하이브리드는 측정값이 없으면 AI 전용과 똑같이 동작한다. 차이가 없는데
   // 토글을 보여 주면 "눌러도 아무 일도 안 난다"가 되므로 그때는 숨긴다.
@@ -706,6 +723,24 @@ export function DemoCard() {
                   >
                     확신도
                   </button>
+                  {haptikSupported() && (
+                    <button
+                      type="button"
+                      aria-pressed={band}
+                      onClick={async () => {
+                        if (band) {
+                          await disconnectBand();
+                          setBand(false);
+                        } else {
+                          setBand(await connectBand());
+                        }
+                      }}
+                      className={band ? styles.segMiniOn : styles.segMiniOff}
+                      title="손목 밴드를 USB 로 연결하면 감정마다 다른 리듬으로 울립니다"
+                    >
+                      {band ? "밴드 연결됨" : "손목 밴드"}
+                    </button>
+                  )}
                 </div>
                 <div className={styles.bottomRight}>
                   <div className={styles.legend}>
