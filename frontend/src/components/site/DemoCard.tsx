@@ -56,6 +56,11 @@ export function DemoCard() {
   const [status, setStatus] = useState("업로드하는 중");
   const [error, setError] = useState("");
   const [serverUp, setServerUp] = useState<boolean | null>(null);
+  // 연출 대본(?script=)으로 재생 중인가. 선명도를 올리는 데만 쓴다.
+  const [vividRender, setVividRender] = useState(false);
+  // 연출 대본의 이름. 심사위원이 "지금 몇 번째를 보고 있는지" 알 수 있게
+  // 화면과 탭 제목에 같이 띄운다.
+  const [demoLabel, setDemoLabel] = useState("");
 
   const [mode, setMode] = useState<"ss" | "caption">("ss");
   const [renderMode, setRenderMode] = useState<RenderMode>(DEFAULT_RENDER_MODE);
@@ -102,6 +107,8 @@ export function DemoCard() {
       setAnalyzedUntil(0);
       setDone(false);
       setError("");
+      setVividRender(false);
+      setDemoLabel("");
       setTime(0);
       setFollow(true);
       setMode("ss");
@@ -188,7 +195,7 @@ export function DemoCard() {
     try {
       const res = await fetch(`/stimuli/${key}.srt`);
       if (!res.ok) throw new Error(String(res.status));
-      const { timeline, totalDuration } = buildTimelineFromScript(await res.text());
+      const { timeline, totalDuration } = buildTimelineFromScript(await res.text(), { vivid: true });
       if (!timeline.length) throw new Error("대본에서 자막을 찾지 못했습니다");
       setSource({ kind: "file", url: `/stimuli/${key}.mp4`, name: `${key}.mp4`, isVideo: true });
       setSegments(timeline);
@@ -197,6 +204,10 @@ export function DemoCard() {
       setDone(true);
       setMode("ss");
       setFollow(true);
+      setVividRender(true);
+      const m = key.match(/^demo(\d+)$/);
+      const label = m ? `데모 ${m[1]}` : key;
+      setDemoLabel(label);
       setStage("ready");
     } catch (e) {
       setError(`연출 대본을 불러오지 못했어요 (${e instanceof Error ? e.message : e}).`);
@@ -209,9 +220,17 @@ export function DemoCard() {
     if (key) void startScript(key);
   }, [startScript]);
 
+  // 탭 제목도 같이 바꾼다. 효과로 거는 이유: 라우터가 메타데이터 제목을 나중에
+  // 덮어쓰기 때문에, 대본을 읽는 그 자리에서 넣으면 도로 돌아간다.
+  useEffect(() => {
+    if (demoLabel) document.title = `${demoLabel} — SoundShape`;
+  }, [demoLabel]);
+
   const reset = useCallback(() => {
     abortRef.current?.abort();
     setStage("idle");
+    setVividRender(false);
+    setDemoLabel("");
     setSource(null);
     setSegments([]);
     setPlaying(false);
@@ -310,12 +329,24 @@ export function DemoCard() {
       undefined,
     );
     const conf = seg?.emotion?.confidence;
+    // 연출 재생은 측정값이 없어 hybrid 가 꺼지고, 낮은 확신도가 채도를 바닥까지
+    // 끌어내린다 (비꼼 39→25, 슬픔 25→10). 그 위에 셰이더의 흐림까지 겹치면
+    // 빔프로젝터에서는 회색으로 보인다 — 심사위원이 보는 건 그 화면이다.
+    // 그래서 연출 재생에서만 채도의 바닥을 올리고 흐림을 절반으로 줄인다.
+    // 색상과 감정 간 순서는 그대로라, 보이는 의미는 달라지지 않는다.
+    // 바닥을 올리되 납작하게 만들지는 않는다. 눌린 채도를 [58, 92] 구간으로
+    // 다시 펼치면, 확신이 높을수록 진하다는 관계는 화면에 그대로 남는다.
+    const uScale = vividRender ? 0.5 : 1;
+    const sat = vividRender
+      ? 58 + (Math.min(95, base.color.s) / 95) * 34
+      : Math.max(30, base.color.s);
     return {
       ...base,
-      color: { h: toneHsl.h, s: Math.max(30, base.color.s), l: toneHsl.l },
-      uncertainty: conf == null ? 0 : Math.max(0, Math.min(1, 1 - conf / 0.85)),
+      color: { h: toneHsl.h, s: sat, l: toneHsl.l },
+      uncertainty:
+        conf == null ? 0 : uScale * Math.max(0, Math.min(1, 1 - conf / 0.85)),
     };
-  }, [last, segments, toneHsl, renderMode]);
+  }, [last, segments, toneHsl, renderMode, vividRender]);
 
   // 하이브리드는 측정값이 없으면 AI 전용과 똑같이 동작한다. 차이가 없는데
   // 토글을 보여 주면 "눌러도 아무 일도 안 난다"가 되므로 그때는 숨긴다.
@@ -518,6 +549,7 @@ export function DemoCard() {
 
       {view === "ready" && source && (
         <div className={styles.ready}>
+          {demoLabel && <div className={styles.demoLabel}>{demoLabel}</div>}
           <div className={styles.segmented} role="group" aria-label="보기 방식">
             <button
               type="button"

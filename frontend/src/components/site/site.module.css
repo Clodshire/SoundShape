@@ -1439,3 +1439,16 @@ input.srOnly:focus-visible + .dropButtons label {
   flex: none;
   transition: background-color 0.6s ease;
 }
+
+/* 연출 대본 이름. 시연 중 심사위원이 몇 번째를 보고 있는지 알 수 있게. */
+.demoLabel {
+  align-self: center;
+  margin-bottom: 10px;
+  padding: 6px 18px;
+  border-radius: 999px;
+  background: #11131a;
+  color: #fff;
+  font-size: 15px;
+  font-weight: 800;
+  letter-spacing: -0.01em;
+}

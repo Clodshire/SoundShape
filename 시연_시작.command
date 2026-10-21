@@ -60,9 +60,9 @@ fi
 # 탭 순서가 곧 시연 순서다. ⌘1 ⌘2 ⌘3 으로만 움직이면 다른 창이 안 보인다.
 open -a "Google Chrome" "http://localhost:3000/"
 sleep 1
-open -a "Google Chrome" "http://localhost:3000/?script=drama_ko"
+open -a "Google Chrome" "http://localhost:3000/?script=demo1"
 sleep 1
-open -a "Google Chrome" "http://localhost:3000/?script=drama_call"
+open -a "Google Chrome" "http://localhost:3000/?script=demo2"
 
 cat <<'EOF'
 
@@ -71,7 +71,7 @@ cat <<'EOF'
 
  이제 이 터미널 창을 ⌘H 로 숨기십시오.
 
- 크롬 탭        ⌘1 소개   ⌘2 변호사 장면   ⌘3 통화 장면
+ 크롬 탭        ⌘1 소개   ⌘2 데모 1 (변호사)   ⌘3 데모 2 (통화)
  전체화면       ⌃⌘F  (메뉴 막대까지 사라집니다)
  끝낸 뒤 정리    이 창을 다시 띄워 ⌃C
 ────────────────────────────────────────────────
