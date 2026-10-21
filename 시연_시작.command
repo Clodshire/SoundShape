@@ -1,0 +1,78 @@
+#!/bin/bash
+# 발표 당일 더블클릭 한 번으로 시연 환경을 올린다.
+#
+# 심사위원 앞에서 터미널을 띄우지 않으려면 **판정 시작 10분 전에** 이걸 실행하고,
+# 준비 완료가 뜨면 터미널을 ⌘H 로 숨기십시오.
+#
+# 하는 일
+#   1. 3000·8000 포트에 남아 있는 서버를 정리
+#   2. 백엔드 실행 — 뜰 때 모델을 미리 데운다 (첫 분석이 30초 걸리는 걸 막는다)
+#   3. 프론트엔드를 **프로덕션 빌드로** 실행 (개발 배지가 화면에 안 찍힌다)
+#   4. 백엔드가 준비될 때까지 기다렸다가 크롬에 시연용 탭 3개를 연다
+#
+# 행사장 와이파이가 끊겨도 1~4 는 전부 로컬이라 그대로 됩니다.
+
+set -u
+cd "$(dirname "$0")" || exit 1
+REPO="$PWD"
+VENV="$HOME/.soundshape_venv/bin"
+LOG="$REPO/.시연로그"
+mkdir -p "$LOG"
+
+# 허깅페이스에 나가지 않는다. 모델은 전부 받아 둔 상태라 캐시로 뜨고, 와이파이가
+# 나쁠 때 네트워크 타임아웃으로 멈추는 것을 막아 준다.
+export HF_HUB_OFFLINE=1
+export TRANSFORMERS_OFFLINE=1
+
+say() { printf "\n\033[1m%s\033[0m\n" "$1"; }
+
+say "1/4  남아 있는 서버 정리"
+lsof -ti tcp:8000 | xargs kill -9 2>/dev/null
+lsof -ti tcp:3000 | xargs kill -9 2>/dev/null
+sleep 1
+
+say "2/4  분석 서버 시작 (모델 예열 포함 — 30초쯤 걸립니다)"
+"$VENV/uvicorn" backend.api.main:app --port 8000 > "$LOG/backend.log" 2>&1 &
+
+say "3/4  웹사이트 시작"
+if [ ! -d "$REPO/frontend/.next" ]; then
+  echo "    빌드가 없어서 먼저 빌드합니다 (1분쯤)…"
+  (cd "$REPO/frontend" && npm run build > "$LOG/build.log" 2>&1) \
+    || { echo "    ❌ 빌드 실패 — $LOG/build.log 를 보십시오"; exit 1; }
+fi
+(cd "$REPO/frontend" && npm run start > "$LOG/frontend.log" 2>&1) &
+
+say "4/4  준비될 때까지 기다리는 중"
+for i in $(seq 1 90); do
+  front=$(curl -s -o /dev/null -w '%{http_code}' http://localhost:3000/ 2>/dev/null)
+  back=$(curl -s -o /dev/null -w '%{http_code}' http://localhost:8000/health 2>/dev/null)
+  [ "$front" = "200" ] && [ "$back" = "200" ] && break
+  printf "."
+  sleep 1
+done
+echo
+
+if [ "${back:-}" != "200" ]; then
+  echo "    ⚠️  분석 서버가 안 떴습니다. $LOG/backend.log 를 보십시오."
+  echo "       대본 시연(①②)은 분석 서버 없이도 됩니다. 그대로 진행하십시오."
+fi
+
+# 탭 순서가 곧 시연 순서다. ⌘1 ⌘2 ⌘3 으로만 움직이면 다른 창이 안 보인다.
+open -a "Google Chrome" "http://localhost:3000/"
+sleep 1
+open -a "Google Chrome" "http://localhost:3000/?script=drama_ko"
+sleep 1
+open -a "Google Chrome" "http://localhost:3000/?script=drama_call"
+
+cat <<'EOF'
+
+────────────────────────────────────────────────
+ 준비 완료
+
+ 이제 이 터미널 창을 ⌘H 로 숨기십시오.
+
+ 크롬 탭        ⌘1 소개   ⌘2 변호사 장면   ⌘3 통화 장면
+ 전체화면       ⌃⌘F  (메뉴 막대까지 사라집니다)
+ 끝낸 뒤 정리    이 창을 다시 띄워 ⌃C
+────────────────────────────────────────────────
+EOF
