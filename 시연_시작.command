@@ -35,12 +35,26 @@ say "2/4  분석 서버 시작 (모델 예열 포함 — 30초쯤 걸립니다)"
 "$VENV/uvicorn" backend.api.main:app --port 8000 > "$LOG/backend.log" 2>&1 &
 
 say "3/4  웹사이트 시작"
-if [ ! -d "$REPO/frontend/.next" ]; then
-  echo "    빌드가 없어서 먼저 빌드합니다 (1분쯤)…"
+# 빌드가 없거나, 소스가 빌드보다 새로우면 다시 빌드한다. 빌드가 낡은 채로
+# 시연에 들어가면 화면이 어제 것이고, 무대에서는 그걸 알아챌 방법이 없다.
+stale=0
+[ -f "$REPO/frontend/.next/BUILD_ID" ] || stale=1
+if [ "$stale" = 0 ]; then
+  newer=$(find "$REPO/frontend/src" "$REPO/frontend/package.json" \
+            -newer "$REPO/frontend/.next/BUILD_ID" -print -quit 2>/dev/null)
+  [ -n "$newer" ] && stale=1
+fi
+if [ "$stale" = 1 ]; then
+  echo "    빌드가 없거나 낡아서 다시 빌드합니다 (1분쯤)…"
   (cd "$REPO/frontend" && npm run build > "$LOG/build.log" 2>&1) \
     || { echo "    ❌ 빌드 실패 — $LOG/build.log 를 보십시오"; exit 1; }
 fi
 (cd "$REPO/frontend" && npm run start > "$LOG/frontend.log" 2>&1) &
+
+# 시연에 쓰는 파일이 실제로 있는지 본다. 없으면 무대에서 빈 화면이 뜬다.
+for f in demo1.mp4 demo1.srt demo2.mp4 demo2.srt; do
+  [ -f "$REPO/frontend/public/stimuli/$f" ] || echo "    ⚠️  없음: stimuli/$f"
+done
 
 say "4/4  준비될 때까지 기다리는 중"
 for i in $(seq 1 90); do
