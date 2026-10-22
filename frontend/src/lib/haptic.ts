@@ -140,6 +140,8 @@ interface SerialPortLike {
 }
 interface SerialLike {
   requestPort(): Promise<SerialPortLike>;
+  /** 전에 허락한 포트들. 한 번 고르고 나면 다시 묻지 않아도 된다. */
+  getPorts(): Promise<SerialPortLike[]>;
 }
 
 function serial(): SerialLike | null {
@@ -195,6 +197,32 @@ export async function connectBand(): Promise<boolean> {
     return true;
   } catch {
     // 사용자가 창을 닫았거나 포트를 이미 누가 쓰고 있다 (시리얼 모니터).
+    port = null;
+    writer = null;
+    return false;
+  }
+}
+
+/**
+ * 전에 허락한 포트가 있으면 묻지 않고 바로 붙는다.
+ *
+ * 새로고침할 때마다 버튼을 누르고 포트를 다시 고르는 건, 리듬을 다듬을 때도
+ * 발표 당일에도 똑같이 걸리적거린다. 크롬은 한 번 허락한 포트를 기억하므로
+ * 두 번째부터는 조용히 이어 붙일 수 있다. 첫 연결만 사람 손이 필요하다.
+ */
+export async function reconnectBand(): Promise<boolean> {
+  const s = serial();
+  if (!s || writer) return writer !== null;
+  try {
+    const [p] = await s.getPorts();
+    if (!p) return false;
+    await p.open({ baudRate: 115200 });
+    if (!p.writable) return false;
+    port = p;
+    writer = p.writable.getWriter();
+    return true;
+  } catch {
+    // 이미 열려 있거나 다른 프로그램이 쓰고 있다 (시리얼 모니터).
     port = null;
     writer = null;
     return false;

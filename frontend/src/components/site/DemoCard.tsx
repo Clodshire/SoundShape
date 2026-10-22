@@ -10,6 +10,7 @@ import {
   disconnectBand,
   haptikSupported,
   playEmotion,
+  reconnectBand,
   setLevel as setBandLevel,
   stopBand,
 } from "@/lib/haptic";
@@ -410,6 +411,12 @@ export function DemoCard() {
       setBandLevel(1);
     };
   }, [band, playing, analyser]);
+
+  // 전에 허락한 포트가 있으면 새로고침 뒤에도 알아서 붙는다. 버튼을 다시 누르고
+  // 포트를 또 고르는 수고가 없어진다 — 발표 당일에도 같은 이득이다.
+  useEffect(() => {
+    void reconnectBand().then((ok) => { if (ok) setBand(true); });
+  }, []);
 
   // 탭을 닫거나 다른 영상으로 넘어갈 때 밴드가 계속 울면 안 된다.
   useEffect(() => () => { void disconnectBand(); }, []);
