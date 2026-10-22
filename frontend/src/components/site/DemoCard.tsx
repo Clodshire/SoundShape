@@ -395,7 +395,10 @@ export function DemoCard() {
       loud = Math.max(loud * 0.995, smooth);
       // 음소거로 재생하면 소리가 0 이라 손목도 죽는다. 그럴 때는 포기하고
       // 리듬을 그대로 내보낸다 — 조용한 밴드보다는 낫다.
-      setBandLevel(loud < 0.04 ? 1 : smooth);
+      // 0.6 제곱으로 펴 준다. 그냥 곱하면 말 중간의 작은 골짜기까지 세기를
+      // 깎아서, 감정마다 다르게 짜 놓은 리듬이 전부 비슷하게 뭉개진다.
+      // 진짜 침묵에서만 떨어지고 말하는 동안에는 리듬이 살아 있어야 한다.
+      setBandLevel(loud < 0.04 ? 1 : Math.pow(smooth, 0.6));
       raf = requestAnimationFrame(tick);
     };
     raf = requestAnimationFrame(tick);
