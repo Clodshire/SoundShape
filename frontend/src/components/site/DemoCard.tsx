@@ -392,17 +392,19 @@ export function DemoCard() {
       const rms = Math.sqrt(sum / buf.length);
       const v = Math.max(0, Math.min(1, rms * 6));
       // 올라올 때는 빠르게, 내려갈 때는 천천히 — 자음마다 뚝뚝 끊기면 안 된다.
-      smooth = v > smooth ? smooth + (v - smooth) * 0.5 : smooth + (v - smooth) * 0.12;
+      smooth = v > smooth ? smooth + (v - smooth) * 0.55 : smooth + (v - smooth) * 0.22;
       loud = Math.max(loud * 0.995, smooth);
       // 음소거로 재생하면 소리가 0 이라 손목도 죽는다. 그럴 때는 포기하고
       // 리듬을 그대로 내보낸다 — 조용한 밴드보다는 낫다.
       // 0.6 제곱으로 펴 준다. 그냥 곱하면 말 중간의 작은 골짜기까지 세기를
       // 깎아서, 감정마다 다르게 짜 놓은 리듬이 전부 비슷하게 뭉개진다.
       // 진짜 침묵에서만 떨어지고 말하는 동안에는 리듬이 살아 있어야 한다.
-      // 0.6 제곱으로 펴 준다. 그냥 곱하면 말 중간의 작은 골짜기까지 세기를 깎아서,
-      // 감정마다 다르게 짜 놓은 리듬이 전부 비슷하게 뭉개진다. 바닥 0.12 는 완전한
-      // 무음에서도 아주 희미하게는 남겨 두기 위한 것이다.
-      setBandLevel(loud < 0.04 ? 1 : 0.12 + 0.88 * Math.pow(smooth, 0.6));
+      // 말이 없으면 **완전히** 0 이다. 바닥을 남겨 두면 계속 웅웅거려서, 쉬는
+      // 구간이 쉬는 것으로 안 느껴진다. 0.06 아래는 잘라 버린다.
+      // 말하는 동안에는 거의 그대로(0.85 제곱) 넘겨 강약을 살린다 — 많이 눌러
+      // 펴면 센 말과 약한 말이 같은 세기로 손목에 온다.
+      const gated = smooth < 0.06 ? 0 : Math.pow(smooth, 0.85);
+      setBandLevel(loud < 0.04 ? 1 : gated);
       raf = requestAnimationFrame(tick);
     };
     raf = requestAnimationFrame(tick);
