@@ -388,6 +388,7 @@ export function DemoCard() {
     const buf = new Uint8Array(analyser.fftSize);
     let smooth = 0;   // 세기용 — 빠르게 따라간다
     let env = 0;      // 문턱 판단용 — 느리게 움직여 순간 소리에 안 속는다
+    let peak = 0;     // 최근 가장 컸던 값 — 문턱을 여기에 상대적으로 잡는다
     let open = false; // 지금 열려 있나 (히스테리시스)
     let loud = 0;     // 최근에 소리가 있었나 — 음소거 알아보기
     let raf = 0;
@@ -403,9 +404,16 @@ export function DemoCard() {
       smooth = v > smooth ? smooth + (v - smooth) * 0.55 : smooth + (v - smooth) * 0.22;
       env = v > env ? env + (v - env) * 0.25 : env + (v - env) * 0.08;
       loud = Math.max(loud * 0.995, env);
+      // 문턱을 **고정값이 아니라 최근 최대치의 비율로** 잡는다. 고정으로 두면
+      // 클립마다 녹음 레벨이 달라 한쪽에서만 열린다 — 합친 데모의 뒤쪽 절반이
+      // 앞쪽보다 13dB 조용해서 아예 안 울렸던 게 그 때문이다. 상대값이면
+      // 어떤 영상을 올려도 그 영상의 대사 크기에 맞춰진다.
+      peak = Math.max(peak * 0.999, env);
+      const openAt = Math.max(0.09, peak * 0.42);
+      const closeAt = Math.max(0.05, peak * 0.26);
       // 열고 닫는 문턱을 벌려 둔다. 하나로 두면 경계에서 깜빡거린다.
       const was = open;
-      open = env > 0.26 ? true : env < 0.16 ? false : open;
+      open = env > openAt ? true : env < closeAt ? false : open;
 
       if (loud < 0.04) {
         // 음소거로 재생 중이다. 측정이 불가능하니 리듬을 그대로 내보낸다.
