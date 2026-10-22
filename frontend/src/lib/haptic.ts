@@ -153,6 +153,16 @@ function serial(): SerialLike | null {
   return n.serial ?? null;
 }
 
+/**
+ * 지금 들리는 목소리의 크기 (0~1). 리듬에 곱해진다.
+ *
+ * 리듬은 **추론**(어떤 감정인가)이고 이 값은 **측정**(지금 실제로 소리가 나는가)
+ * 이다. 둘을 곱하면 말이 끊긴 자리에서는 손목도 같이 조용해져서, 진동이 영상과
+ * 따로 노는 느낌이 사라진다. 화면 쪽에서 크기·채도를 측정값에서 가져오는 것과
+ * 같은 생각이다.
+ */
+let level = 1;
+
 let port: SerialPortLike | null = null;
 let writer: WritableStreamDefaultWriter<Uint8Array> | null = null;
 let timer: ReturnType<typeof setInterval> | null = null;
@@ -164,6 +174,18 @@ export function haptikSupported(): boolean {
 
 export function isConnected(): boolean {
   return writer !== null;
+}
+
+/** 재생 중 매 프레임 불러 준다. 소리가 없으면 0 에 가까워진다. */
+export function setLevel(v: number): void {
+  level = Math.max(0, Math.min(1, v));
+}
+
+/** 일시정지·정지. 울리던 것을 그 자리에서 끊고 0 을 보낸다. */
+export function stopBand(): void {
+  stop();
+  level = 1;
+  if (writer) void writer.write(new Uint8Array([0])).catch(() => {});
 }
 
 /** 반드시 클릭 핸들러 안에서 부를 것 — 포트 선택 창이 제스처를 요구한다. */
@@ -234,7 +256,7 @@ export function playEmotion(
     if (!writer || writer !== w) return stop();
     const v = i < frames.length ? frames[i] : 0;
     i += 1;
-    void w.write(new Uint8Array([v])).catch(() => stop());
+    void w.write(new Uint8Array([Math.round(v * level)])).catch(() => stop());
     // 마지막 0 까지 보내고 멈춘다. 이후에는 펌웨어의 400ms 타임아웃이
     // 한 번 더 0 으로 눌러 주므로, 연결이 끊겨도 계속 울지 않는다.
     if (i > frames.length) stop();

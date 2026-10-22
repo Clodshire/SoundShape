@@ -5,7 +5,14 @@ import { EmotionCanvas } from "@/components/EmotionCanvas";
 import { health, processFileStream, processUrlStream } from "@/lib/api";
 import { DEFAULT_RENDER_MODE, mapEmotionToVisual, type RenderMode } from "@/lib/mapping";
 import { buildTimelineFromScript } from "@/lib/scriptMode";
-import { connectBand, disconnectBand, haptikSupported, playEmotion } from "@/lib/haptic";
+import {
+  connectBand,
+  disconnectBand,
+  haptikSupported,
+  playEmotion,
+  setLevel as setBandLevel,
+  stopBand,
+} from "@/lib/haptic";
 import type { TimelineFrame } from "@/types/emotion";
 import styles from "./site.module.css";
 import { TONES, TONE_ORDER, hexToHsl, lineAt, toneForEmotion, type ToneId } from "./tones";
@@ -355,12 +362,48 @@ export function DemoCard() {
   // 갈라져 나오므로, 보는 것과 느끼는 것이 어긋나지 않는다.
   const beat = last?.t ?? -1;
   useEffect(() => {
-    if (!band || beat < 0) return;
+    if (!band) return;
+    // 멈춰 있으면 손목도 멈춘다. 재생을 다시 누르면 그 줄의 리듬을 처음부터.
+    if (!playing || beat < 0) {
+      stopBand();
+      return;
+    }
     const e = last?.emotion;
     if (e) playEmotion(e.category, e.confidence ?? 1, (last?.duration ?? 0) * 1000);
     // last 는 매 프레임 새 객체가 될 수 있어서, 줄이 바뀌는 beat 로만 건다.
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [band, beat]);
+  }, [band, beat, playing]);
+
+  // 목소리 크기를 그대로 손목으로 넘긴다. 말이 끊긴 자리에서는 진동도 같이 쉰다.
+  useEffect(() => {
+    if (!band || !playing || !analyser) return;
+    const buf = new Uint8Array(analyser.fftSize);
+    let smooth = 0;
+    let loud = 0; // 최근에 소리가 있었나 — 음소거를 알아보기 위한 기록
+    let raf = 0;
+    const tick = () => {
+      analyser.getByteTimeDomainData(buf);
+      let sum = 0;
+      for (let i = 0; i < buf.length; i++) {
+        const x = (buf[i] - 128) / 128;
+        sum += x * x;
+      }
+      const rms = Math.sqrt(sum / buf.length);
+      const v = Math.max(0, Math.min(1, rms * 6));
+      // 올라올 때는 빠르게, 내려갈 때는 천천히 — 자음마다 뚝뚝 끊기면 안 된다.
+      smooth = v > smooth ? smooth + (v - smooth) * 0.5 : smooth + (v - smooth) * 0.12;
+      loud = Math.max(loud * 0.995, smooth);
+      // 음소거로 재생하면 소리가 0 이라 손목도 죽는다. 그럴 때는 포기하고
+      // 리듬을 그대로 내보낸다 — 조용한 밴드보다는 낫다.
+      setBandLevel(loud < 0.04 ? 1 : smooth);
+      raf = requestAnimationFrame(tick);
+    };
+    raf = requestAnimationFrame(tick);
+    return () => {
+      cancelAnimationFrame(raf);
+      setBandLevel(1);
+    };
+  }, [band, playing, analyser]);
 
   // 탭을 닫거나 다른 영상으로 넘어갈 때 밴드가 계속 울면 안 된다.
   useEffect(() => () => { void disconnectBand(); }, []);
