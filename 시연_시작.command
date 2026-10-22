@@ -32,7 +32,10 @@ lsof -ti tcp:3000 | xargs kill -9 2>/dev/null
 sleep 1
 
 say "2/4  분석 서버 시작 (모델 예열 포함 — 30초쯤 걸립니다)"
-"$VENV/uvicorn" backend.api.main:app --port 8000 > "$LOG/backend.log" 2>&1 &
+# nohup + disown 으로 떼어 놓는다. 이렇게 해야 이 터미널 창을 닫아도 서버가
+# 계속 떠 있다. 발표 중에 창을 잘못 닫는 사고는 한 번이면 충분하다.
+nohup "$VENV/uvicorn" backend.api.main:app --port 8000 > "$LOG/backend.log" 2>&1 &
+disown
 
 say "3/4  웹사이트 시작"
 # 빌드가 없거나, 소스가 빌드보다 새로우면 다시 빌드한다. 빌드가 낡은 채로
@@ -49,7 +52,8 @@ if [ "$stale" = 1 ]; then
   (cd "$REPO/frontend" && npm run build > "$LOG/build.log" 2>&1) \
     || { echo "    ❌ 빌드 실패 — $LOG/build.log 를 보십시오"; exit 1; }
 fi
-(cd "$REPO/frontend" && npm run start > "$LOG/frontend.log" 2>&1) &
+(cd "$REPO/frontend" && nohup npm run start > "$LOG/frontend.log" 2>&1) &
+disown
 
 # 시연에 쓰는 파일이 실제로 있는지 본다. 없으면 무대에서 빈 화면이 뜬다.
 for f in demo1.mp4 demo1.srt demo2.mp4 demo2.srt; do
@@ -83,10 +87,11 @@ cat <<'EOF'
 ────────────────────────────────────────────────
  준비 완료
 
- 이제 이 터미널 창을 ⌘H 로 숨기십시오.
+ 이제 이 터미널 창을 ⌘H 로 숨기거나 그냥 닫으셔도 됩니다.
+ 서버는 떼어 놓았으므로 창을 닫아도 계속 떠 있습니다.
 
  크롬 탭        ⌘1 소개   ⌘2 데모 1 (변호사)   ⌘3 데모 2 (저금통)
  전체화면       ⌃⌘F  (메뉴 막대까지 사라집니다)
- 끝낸 뒤 정리    이 창을 다시 띄워 ⌃C
+ 끝낸 뒤 정리    터미널에서  lsof -ti tcp:3000 tcp:8000 | xargs kill
 ────────────────────────────────────────────────
 EOF
