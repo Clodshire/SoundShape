@@ -375,12 +375,21 @@ export function DemoCard() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [band, beat, playing]);
 
-  // 목소리 크기를 그대로 손목으로 넘긴다. 말이 끊긴 자리에서는 진동도 같이 쉰다.
+  // 목소리 크기를 그대로 손목으로 넘긴다. 말이 없으면 아예 0 이다.
+  //
+  // 문턱을 소리의 유무가 아니라 **대사인지 배경인지**에 맞춰 잡아야 한다.
+  // demo1 의 14~18초는 대사가 끝난 구간인데도 배경음이 평균 −34.6dB 로 깔려 있어서,
+  // 낮은 문턱이면 그대로 열려 계속 울린다. 대사는 −23.6dB 로 11dB 더 크다.
+  // 그래서 문턱을 그 사이에 두고, 순간적인 소리에 열리지 않도록 느린 값으로 판단한다.
+  const lastRef = useRef(last);
+  lastRef.current = last;
   useEffect(() => {
     if (!band || !playing || !analyser) return;
     const buf = new Uint8Array(analyser.fftSize);
-    let smooth = 0;
-    let loud = 0; // 최근에 소리가 있었나 — 음소거를 알아보기 위한 기록
+    let smooth = 0;   // 세기용 — 빠르게 따라간다
+    let env = 0;      // 문턱 판단용 — 느리게 움직여 순간 소리에 안 속는다
+    let open = false; // 지금 열려 있나 (히스테리시스)
+    let loud = 0;     // 최근에 소리가 있었나 — 음소거 알아보기
     let raf = 0;
     const tick = () => {
       analyser.getByteTimeDomainData(buf);
@@ -389,22 +398,32 @@ export function DemoCard() {
         const x = (buf[i] - 128) / 128;
         sum += x * x;
       }
-      const rms = Math.sqrt(sum / buf.length);
-      const v = Math.max(0, Math.min(1, rms * 6));
+      const v = Math.max(0, Math.min(1, Math.sqrt(sum / buf.length) * 6));
       // 올라올 때는 빠르게, 내려갈 때는 천천히 — 자음마다 뚝뚝 끊기면 안 된다.
       smooth = v > smooth ? smooth + (v - smooth) * 0.55 : smooth + (v - smooth) * 0.22;
-      loud = Math.max(loud * 0.995, smooth);
-      // 음소거로 재생하면 소리가 0 이라 손목도 죽는다. 그럴 때는 포기하고
-      // 리듬을 그대로 내보낸다 — 조용한 밴드보다는 낫다.
-      // 0.6 제곱으로 펴 준다. 그냥 곱하면 말 중간의 작은 골짜기까지 세기를
-      // 깎아서, 감정마다 다르게 짜 놓은 리듬이 전부 비슷하게 뭉개진다.
-      // 진짜 침묵에서만 떨어지고 말하는 동안에는 리듬이 살아 있어야 한다.
-      // 말이 없으면 **완전히** 0 이다. 바닥을 남겨 두면 계속 웅웅거려서, 쉬는
-      // 구간이 쉬는 것으로 안 느껴진다. 0.06 아래는 잘라 버린다.
-      // 말하는 동안에는 거의 그대로(0.85 제곱) 넘겨 강약을 살린다 — 많이 눌러
-      // 펴면 센 말과 약한 말이 같은 세기로 손목에 온다.
-      const gated = smooth < 0.06 ? 0 : Math.pow(smooth, 0.85);
-      setBandLevel(loud < 0.04 ? 1 : gated);
+      env = v > env ? env + (v - env) * 0.25 : env + (v - env) * 0.08;
+      loud = Math.max(loud * 0.995, env);
+      // 열고 닫는 문턱을 벌려 둔다. 하나로 두면 경계에서 깜빡거린다.
+      const was = open;
+      open = env > 0.26 ? true : env < 0.16 ? false : open;
+
+      if (loud < 0.04) {
+        // 음소거로 재생 중이다. 측정이 불가능하니 리듬을 그대로 내보낸다.
+        setBandLevel(1);
+      } else if (!open) {
+        setBandLevel(0);
+        if (was) stopBand();            // 대사가 끝났다 — 루프까지 끊는다
+      } else {
+        // 말하는 동안에는 거의 그대로(0.85 제곱) 넘겨 강약을 살린다.
+        setBandLevel(Math.pow(smooth, 0.85));
+        if (!was) {
+          // 다시 말을 시작했다 — 그 줄의 리듬을 처음부터.
+          const e = lastRef.current?.emotion;
+          if (e) {
+            playEmotion(e.category, e.confidence ?? 1, (lastRef.current?.duration ?? 0) * 1000);
+          }
+        }
+      }
       raf = requestAnimationFrame(tick);
     };
     raf = requestAnimationFrame(tick);
