@@ -28,37 +28,66 @@ const STOP_BYTE = 255;
 type Step = [amp: number, ms: number];
 
 /**
- * 감정별 리듬.
+ * 감정별 리듬 — 한 번 도는 분량.
  *
  * 구분의 축은 **치는 횟수**와 **들어오는 모양**이다. 세기만 다르게 하면 결국
  * 같은 느낌이라, 세기는 보조로만 쓴다.
+ *
+ * 줄이 끝날 때까지 이 한 바퀴를 `REST` 만큼 쉬며 되풀이한다. 처음에는 한 번만
+ * 쳤는데, 손목에 남는 게 전환 순간의 깜빡임뿐이라 **지금 무슨 감정인지**가 아니라
+ * **방금 뭔가 바뀌었다**만 전달됐다. 화면의 도형은 그 줄 내내 떠 있으므로 손목도
+ * 그래야 한다.
  */
 const PATTERNS: Record<string, Step[]> = {
-  // 날카롭게 두 번. 가장 짧고 가장 거칠다.
-  anger: [[127, 60], [0, 55], [127, 65], [0, 40]],
+  // 날카롭게 두 번, 잠깐 쉬고 다시 두 번. 가장 거칠고 가장 급하다.
+  anger: [
+    [127, 70], [0, 60], [127, 75], [0, 170],
+    [127, 70], [0, 60], [127, 80], [0, 60],
+  ],
 
-  // 가볍게 세 번, 점점 올라간다. 분노와 같은 '여러 번'이지만 약하고 빠르다.
-  joy: [[86, 45], [0, 45], [98, 45], [0, 45], [112, 50], [0, 40]],
+  // 가볍게 세 번 올라갔다가, 다시 세 번. 분노와 같은 '여러 번'이지만 약하고 둥글다.
+  joy: [
+    [80, 55], [0, 50], [94, 55], [0, 50], [110, 60], [0, 180],
+    [80, 55], [0, 50], [96, 55], [0, 50], [112, 60], [0, 60],
+  ],
 
-  // 한 번, 부풀었다 길게 꺼진다. 때리는 느낌이 전혀 없다.
+  // 한 번, 길게 부풀었다 길게 꺼진다. 때리는 느낌이 전혀 없다.
   sadness: [
-    [18, 60], [32, 60], [48, 60], [58, 80], [58, 160],
-    [48, 90], [36, 90], [24, 90], [12, 90], [0, 60],
+    [14, 90], [26, 90], [38, 90], [50, 100], [58, 120],
+    [60, 260],
+    [54, 110], [46, 110], [36, 110], [26, 110], [16, 110], [8, 90], [0, 60],
   ],
 
   // 잘게 떤다. 유일하게 '이어지는' 감각이라 바로 구분된다.
-  fear: [
-    [74, 35], [26, 35], [74, 35], [26, 35], [74, 35], [26, 35],
-    [74, 35], [26, 35], [74, 35], [26, 35], [74, 35], [26, 35],
-    [0, 50],
-  ],
+  fear: Array.from({ length: 17 }, (_, i): Step =>
+    i % 2 === 0 ? [76, 38] : [28, 38],
+  ).concat([[0, 60]]),
 
   // 세게 한 번 치고, 뜸 들이고, 약하게 한 번 더. 그 '뜸'이 비꼼의 느낌이다.
-  sarcasm: [[118, 70], [0, 150], [44, 60], [0, 40]],
+  sarcasm: [
+    [120, 80], [0, 190], [46, 70], [0, 210],
+    [118, 80], [0, 190], [42, 70], [0, 80],
+  ],
 
   // 한 번, 아주 약하게. 있었다는 것만 알린다.
-  neutral: [[38, 90], [0, 40]],
+  neutral: [[36, 110], [0, 90], [30, 90], [0, 80]],
 };
+
+/**
+ * 한 바퀴 뒤 쉬는 시간. 감정마다 다르게 둔다 — 쉼의 길이 자체가 성격이다.
+ * 분노는 몰아치고, 감정 없음은 띄엄띄엄하다.
+ */
+const REST_MS: Record<string, number> = {
+  anger: 260,
+  joy: 340,
+  sadness: 520,
+  fear: 320,
+  sarcasm: 380,
+  neutral: 760,
+};
+
+/** 한 줄이 아무리 길어도 여기까지만 울린다. 그 뒤로는 손목이 무뎌진다. */
+const MAX_PLAY_MS = 7000;
 
 /** 매핑에 있는 나머지 범주를 위 여섯 가지로 접는다 (화면의 tones.ts 와 같은 규칙). */
 const FOLD: Record<string, keyof typeof PATTERNS> = {
@@ -75,7 +104,10 @@ const FOLD: Record<string, keyof typeof PATTERNS> = {
 };
 
 /**
- * 패턴을 20ms 프레임 배열로 편다. 하드웨어 없이도 검사할 수 있도록 따로 뺐다.
+ * 패턴을 프레임 배열로 편다. 하드웨어 없이도 검사할 수 있도록 따로 뺐다.
+ *
+ * `totalMs` 를 주면 그 길이가 찰 때까지 한 바퀴를 되풀이한다 (쉼 포함). 안 주면
+ * 한 바퀴만 돈다.
  *
  * 확신도는 세기만 줄인다 — 리듬까지 흐리면 어떤 감정인지조차 알 수 없게 된다.
  * 바닥을 0.55 로 둬서, 확신이 0 이어도 손목에는 느껴진다.
@@ -83,15 +115,26 @@ const FOLD: Record<string, keyof typeof PATTERNS> = {
 export function patternFrames(
   category: EmotionCategory | string,
   confidence = 1,
+  totalMs?: number,
 ): number[] {
-  const steps = PATTERNS[FOLD[category] ?? "neutral"];
+  const key = FOLD[category] ?? "neutral";
   const gain = 0.55 + 0.45 * Math.max(0, Math.min(1, confidence));
-  const frames: number[] = [];
-  for (const [amp, ms] of steps) {
+  const cycle: number[] = [];
+  for (const [amp, ms] of PATTERNS[key]) {
     const v = Math.max(0, Math.min(MAX_AMP, Math.round(amp * gain)));
-    for (let i = 0; i < Math.max(1, Math.round(ms / FRAME_MS)); i++) frames.push(v);
+    for (let i = 0; i < Math.max(1, Math.round(ms / FRAME_MS)); i++) cycle.push(v);
   }
-  return frames;
+  if (totalMs == null) return cycle;
+
+  const rest = Math.round(REST_MS[key] / FRAME_MS);
+  const want = Math.round(Math.min(totalMs, MAX_PLAY_MS) / FRAME_MS);
+  const frames: number[] = [];
+  while (frames.length < want) {
+    frames.push(...cycle);
+    if (frames.length < want) for (let i = 0; i < rest; i++) frames.push(0);
+  }
+  // 줄이 끝나면 바로 멈춘다 — 다음 줄의 리듬과 겹치면 둘 다 뭉개진다.
+  return frames.slice(0, want);
 }
 
 // ── 연결 ────────────────────────────────────────────────────────────────
@@ -173,16 +216,18 @@ function stop(): void {
 }
 
 /**
- * 한 감정의 리듬을 한 번 재생한다. 재생 중에 다시 부르면 **앞의 것을 끊고**
- * 새로 시작한다 — 대사가 빠르게 이어질 때 진동이 겹쳐 뭉개지면 안 된다.
+ * 한 감정의 리듬을 재생한다. `durationMs` 를 주면 그 줄이 끝날 때까지 되풀이한다.
+ * 재생 중에 다시 부르면 **앞의 것을 끊고** 새로 시작한다 — 대사가 빠르게 이어질 때
+ * 진동이 겹쳐 뭉개지면 안 된다.
  */
 export function playEmotion(
   category: EmotionCategory | string,
   confidence = 1,
+  durationMs?: number,
 ): void {
   if (!writer) return;
   stop();
-  const frames = patternFrames(category, confidence);
+  const frames = patternFrames(category, confidence, durationMs);
   let i = 0;
   const w = writer;
   timer = setInterval(() => {

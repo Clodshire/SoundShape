@@ -357,7 +357,7 @@ export function DemoCard() {
   useEffect(() => {
     if (!band || beat < 0) return;
     const e = last?.emotion;
-    if (e) playEmotion(e.category, e.confidence ?? 1);
+    if (e) playEmotion(e.category, e.confidence ?? 1, (last?.duration ?? 0) * 1000);
     // last 는 매 프레임 새 객체가 될 수 있어서, 줄이 바뀌는 beat 로만 건다.
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [band, beat]);
