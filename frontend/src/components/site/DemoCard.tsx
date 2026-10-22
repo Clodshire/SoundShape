@@ -370,7 +370,12 @@ export function DemoCard() {
       return;
     }
     const e = last?.emotion;
-    if (e) playEmotion(e.category, e.confidence ?? 1, (last?.duration ?? 0) * 1000);
+    // 자막 길이가 아니라 **실제 말한 길이**로 울린다. 자막은 다음 줄이 시작할
+    // 때까지 떠 있는데(장면이 이어지므로), 그 길이로 울리면 말이 끝난 뒤에도
+    // 손목이 계속 떨린다 — demo 의 12.4초 줄은 자막 9초, 발화 1.8초였다.
+    const ms = ((last?.speechDuration ?? last?.duration) ?? 0) * 1000;
+    cueEndRef.current = performance.now() + ms;
+    if (e) playEmotion(e.category, e.confidence ?? 1, ms);
     // last 는 매 프레임 새 객체가 될 수 있어서, 줄이 바뀌는 beat 로만 건다.
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [band, beat, playing]);
@@ -381,6 +386,8 @@ export function DemoCard() {
   // demo1 의 14~18초는 대사가 끝난 구간인데도 배경음이 평균 −34.6dB 로 깔려 있어서,
   // 낮은 문턱이면 그대로 열려 계속 울린다. 대사는 −23.6dB 로 11dB 더 크다.
   // 그래서 문턱을 그 사이에 두고, 순간적인 소리에 열리지 않도록 느린 값으로 판단한다.
+  // 지금 줄의 발화가 끝나는 시각(벽시계). 끝난 뒤에는 손목을 다시 켜지 않는다.
+  const cueEndRef = useRef(0);
   const lastRef = useRef(last);
   lastRef.current = last;
   useEffect(() => {
@@ -424,11 +431,14 @@ export function DemoCard() {
       } else {
         // 말하는 동안에는 거의 그대로(0.85 제곱) 넘겨 강약을 살린다.
         setBandLevel(Math.pow(smooth, 0.85));
-        if (!was) {
-          // 다시 말을 시작했다 — 그 줄의 리듬을 처음부터.
-          const e = lastRef.current?.emotion;
-          if (e) {
-            playEmotion(e.category, e.confidence ?? 1, (lastRef.current?.duration ?? 0) * 1000);
+        if (!was && performance.now() < cueEndRef.current) {
+          // 말하다 말고 숨을 쉰 것이다 — 그 줄의 리듬을 이어서 다시.
+          // 발화가 이미 끝났으면 다시 켜지 않는다. 안 그러면 배경음에 문턱이
+          // 열릴 때마다 되살아나서, 조용해야 할 구간이 도로 울린다.
+          const f = lastRef.current;
+          if (f?.emotion) {
+            const left = cueEndRef.current - performance.now();
+            playEmotion(f.emotion.category, f.emotion.confidence ?? 1, left);
           }
         }
       }

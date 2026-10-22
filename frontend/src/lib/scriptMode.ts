@@ -57,6 +57,8 @@ export interface ScriptCue {
   duration: number;
   text: string;
   emotion: Emotion;
+  /** 실제 발화 길이(초). 자막은 duration 만큼, 손목은 이만큼 울린다. */
+  speechDuration?: number;
 }
 
 /** Parse an .srt whose cue text may start with `[tag]` (Korean or English). */
@@ -75,12 +77,18 @@ export function parseScriptSrt(srt: string): ScriptCue[] {
     let text = lines.slice(idx + 1).join(" ").trim();
 
     let emotion = DEFAULT_EMOTION;
+    let speech: number | undefined;
     const tagMatch = text.match(/^\[\s*([^\]]+?)\s*\]\s*/);
     if (tagMatch) {
       // `[비꼼]` 또는 `[비꼼 71]` / `[비꼼 0.71]` — 뒤의 숫자는 화면에 띄울 확신도.
       // 배지뿐 아니라 매핑에도 넘어가므로, 낮게 적으면 제품과 똑같이 색이 흐려진다.
       const tag = tagMatch[1].trim();
-      const withConf = tag.match(/^(.*?)[\s|,]+(\d{1,3}(?:\.\d+)?)\s*%?$/);
+      // `[비꼼]` · `[비꼼 82]` · `[비꼼 82 1.8]` — 세 번째 숫자는 실제 발화 길이(초).
+      const withAll = tag.match(/^(.*?)[\s|,]+(\d{1,3}(?:\.\d+)?)\s*%?[\s|,]+(\d+(?:\.\d+)?)$/);
+      const withConf = withAll
+        ? [tag, withAll[1], withAll[2]]
+        : tag.match(/^(.*?)[\s|,]+(\d{1,3}(?:\.\d+)?)\s*%?$/);
+      if (withAll) speech = Number(withAll[3]);
       const name = (withConf ? withConf[1] : tag).trim();
       emotion = TAG_TO_EMOTION[name] ?? TAG_TO_EMOTION[name.toLowerCase()] ?? DEFAULT_EMOTION;
       if (withConf) {
@@ -92,7 +100,13 @@ export function parseScriptSrt(srt: string): ScriptCue[] {
       }
       text = text.slice(tagMatch[0].length).trim(); // strip the tag from the caption
     }
-    cues.push({ t: start, duration: Math.max(0.1, end - start), text, emotion });
+    cues.push({
+      t: start,
+      duration: Math.max(0.1, end - start),
+      text,
+      emotion,
+      speechDuration: speech,
+    });
   }
   return cues.sort((x, y) => x.t - y.t);
 }
@@ -127,6 +141,7 @@ export function buildTimelineFromScript(
     return {
       t: c.t,
       duration: c.duration,
+      speechDuration: c.speechDuration,
       text: c.text,
       emotion: c.emotion,
       visual: opts?.vivid ? vivid(visual) : visual,

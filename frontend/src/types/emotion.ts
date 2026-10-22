@@ -110,6 +110,12 @@ export interface TimelineFrame {
   // speaker, so viewers already know how to read it.
   speaker_changed?: boolean;
   visual?: VisualSpec; // backend pre-computes this; frontend also recomputes locally
+  /**
+   * 실제로 말한 길이(초). `duration` 은 다음 자막이 시작할 때까지라서, 말이 끝나고
+   * 장면만 이어지는 구간까지 포함한다. 손목은 말하는 동안에만 울려야 하므로
+   * 그쪽은 이 값을 쓴다. 연출 대본에서만 채워진다.
+   */
+  speechDuration?: number;
 }
 
 // Full backend response: metadata + segments.

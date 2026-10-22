@@ -163,6 +163,23 @@ let port: SerialPortLike | null = null;
 let writer: WritableStreamDefaultWriter<Uint8Array> | null = null;
 let timer: ReturnType<typeof setInterval> | null = null;
 
+/**
+ * 진단용 상태. 손목에 아무 느낌이 없을 때 **어디서 끊겼는지** 보려고 둔다 —
+ * 포트가 안 붙은 건지, 붙었는데 문턱이 안 열린 건지, 열렸는데 0 만 쓰고 있는 건지
+ * 겉으로는 구분이 안 된다. 콘솔에서 `__ssHaptic` 으로 본다.
+ */
+const diag = {
+  connected: false,
+  level: 1,
+  lastPattern: "",
+  framesWritten: 0,
+  lastByte: 0,
+  lastError: "",
+};
+if (typeof window !== "undefined") {
+  (window as typeof window & { __ssHaptic?: typeof diag }).__ssHaptic = diag;
+}
+
 /** 이 브라우저에서 밴드를 쓸 수 있는가 (크롬·엣지 + localhost/HTTPS). */
 export function haptikSupported(): boolean {
   return typeof navigator !== "undefined" && serial() !== null;
@@ -175,6 +192,7 @@ export function isConnected(): boolean {
 /** 재생 중 매 프레임 불러 준다. 소리가 없으면 0 에 가까워진다. */
 export function setLevel(v: number): void {
   level = Math.max(0, Math.min(1, v));
+  diag.level = level;
 }
 
 /** 일시정지·정지. 울리던 것을 그 자리에서 끊고 0 을 보낸다. */
@@ -194,11 +212,15 @@ export async function connectBand(): Promise<boolean> {
     if (!p.writable) return false;
     port = p;
     writer = p.writable.getWriter();
+    diag.connected = true;
+    diag.lastError = "";
     return true;
-  } catch {
+  } catch (e) {
     // 사용자가 창을 닫았거나 포트를 이미 누가 쓰고 있다 (시리얼 모니터).
     port = null;
     writer = null;
+    diag.connected = false;
+    diag.lastError = String(e);
     return false;
   }
 }
@@ -220,11 +242,15 @@ export async function reconnectBand(): Promise<boolean> {
     if (!p.writable) return false;
     port = p;
     writer = p.writable.getWriter();
+    diag.connected = true;
+    diag.lastError = "";
     return true;
-  } catch {
+  } catch (e) {
     // 이미 열려 있거나 다른 프로그램이 쓰고 있다 (시리얼 모니터).
     port = null;
     writer = null;
+    diag.connected = false;
+    diag.lastError = String(e);
     return false;
   }
 }
@@ -244,6 +270,7 @@ export async function disconnectBand(): Promise<void> {
     }
   }
   writer = null;
+  diag.connected = false;
   try {
     await port?.close();
   } catch {
@@ -272,13 +299,20 @@ export function playEmotion(
   if (!writer) return;
   stop();
   const frames = patternFrames(category, confidence, durationMs);
+  diag.lastPattern = `${category} ${Math.round(confidence * 100)}% · ${frames.length}프레임`;
   let i = 0;
   const w = writer;
   timer = setInterval(() => {
     if (!writer || writer !== w) return stop();
     const v = i < frames.length ? frames[i] : 0;
     i += 1;
-    void w.write(new Uint8Array([Math.round(v * level)])).catch(() => stop());
+    const byte = Math.round(v * level);
+    diag.framesWritten += 1;
+    diag.lastByte = byte;
+    void w.write(new Uint8Array([byte])).catch((e) => {
+      diag.lastError = String(e);
+      stop();
+    });
     // 마지막 0 까지 보내고 멈춘다. 이후에는 펌웨어의 400ms 타임아웃이
     // 한 번 더 0 으로 눌러 주므로, 연결이 끊겨도 계속 울지 않는다.
     if (i > frames.length) stop();
