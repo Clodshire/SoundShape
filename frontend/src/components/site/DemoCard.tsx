@@ -398,7 +398,9 @@ export function DemoCard() {
       // 0.6 제곱으로 펴 준다. 그냥 곱하면 말 중간의 작은 골짜기까지 세기를
       // 깎아서, 감정마다 다르게 짜 놓은 리듬이 전부 비슷하게 뭉개진다.
       // 진짜 침묵에서만 떨어지고 말하는 동안에는 리듬이 살아 있어야 한다.
-      setBandLevel(loud < 0.04 ? 1 : Math.pow(smooth, 0.6));
+      // 바닥을 0.35 로 둔다. 말 사이에서 완전히 멈추면 심장이 멎는 느낌이라,
+      // 조용해지되 계속 뛰게 한다. 영상을 멈추면 stopBand() 가 따로 끊는다.
+      setBandLevel(loud < 0.04 ? 1 : 0.35 + 0.65 * Math.pow(smooth, 0.6));
       raf = requestAnimationFrame(tick);
     };
     raf = requestAnimationFrame(tick);
