@@ -56,7 +56,7 @@ fi
 disown
 
 # 시연에 쓰는 파일이 실제로 있는지 본다. 없으면 무대에서 빈 화면이 뜬다.
-for f in demo1.mp4 demo1.srt demo2.mp4 demo2.srt; do
+for f in demo.mp4 demo.srt; do
   [ -f "$REPO/frontend/public/stimuli/$f" ] || echo "    ⚠️  없음: stimuli/$f"
 done
 
@@ -78,9 +78,7 @@ fi
 # 탭 순서가 곧 시연 순서다. ⌘1 ⌘2 ⌘3 으로만 움직이면 다른 창이 안 보인다.
 open -a "Google Chrome" "http://localhost:3000/"
 sleep 1
-open -a "Google Chrome" "http://localhost:3000/?script=demo1"
-sleep 1
-open -a "Google Chrome" "http://localhost:3000/?script=demo2"
+open -a "Google Chrome" "http://localhost:3000/?script=demo"
 
 cat <<'EOF'
 
@@ -90,7 +88,7 @@ cat <<'EOF'
  이제 이 터미널 창을 ⌘H 로 숨기거나 그냥 닫으셔도 됩니다.
  서버는 떼어 놓았으므로 창을 닫아도 계속 떠 있습니다.
 
- 크롬 탭        ⌘1 소개   ⌘2 데모 1 (변호사)   ⌘3 데모 2 (저금통)
+ 크롬 탭        ⌘1 소개   ⌘2 데모 (변호사 → 저금통, 56초)
  전체화면       ⌃⌘F  (메뉴 막대까지 사라집니다)
  끝낸 뒤 정리    터미널에서  lsof -ti tcp:3000 tcp:8000 | xargs kill
 ────────────────────────────────────────────────

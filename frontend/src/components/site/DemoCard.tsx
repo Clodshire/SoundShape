@@ -216,8 +216,8 @@ export function DemoCard() {
       setMode("ss");
       setFollow(true);
       setVividRender(true);
-      const m = key.match(/^demo(\d+)$/);
-      const label = m ? `데모 ${m[1]}` : key;
+      const m = key.match(/^demo(\d*)$/);
+      const label = m ? `데모${m[1] ? ` ${m[1]}` : ""}` : key;
       setDemoLabel(label);
       setStage("ready");
     } catch (e) {
