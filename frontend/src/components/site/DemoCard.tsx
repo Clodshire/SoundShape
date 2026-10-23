@@ -67,6 +67,14 @@ export function DemoCard() {
   const [serverUp, setServerUp] = useState<boolean | null>(null);
   // 연출 대본(?script=)으로 재생 중인가. 선명도를 올리는 데만 쓴다.
   const [vividRender, setVividRender] = useState(false);
+  // 미리 분석해 둔 결과를 트는 모드(`?live=<키>`). 무대에서 파일을 직접 고르는
+  // 모습은 보여 주되, 분석은 어제 끝내 둔 것을 불러온다. 심사위원에게 그렇게
+  // 밝히고 쓰는 전제다 — 밝히지 않으면 방금 분석한 것으로 읽힌다.
+  const [liveKey, setLiveKey] = useState<string | null>(null);
+  const [liveWait, setLiveWait] = useState(6.5);
+  // 준비된 결과를 트는 동안의 진행률. 진짜 분석의 analyzedUntil 을 건드리면
+  // `enough` 가 먼저 참이 되어 화면이 일찍 넘어가 버린다.
+  const [prepProgress, setPrepProgress] = useState<number | null>(null);
   // 연출 대본의 이름. 심사위원이 "지금 몇 번째를 보고 있는지" 알 수 있게
   // 화면과 탭 제목에 같이 띄운다.
   const [demoLabel, setDemoLabel] = useState("");
@@ -160,8 +168,83 @@ export function DemoCard() {
     [],
   );
 
+  /**
+   * 준비해 둔 결과를 불러와 재생한다.
+   *
+   * 고른 파일 이름이 준비된 키와 맞을 때만 이 길로 간다. 다른 파일을 고르면
+   * 평소대로 진짜 분석이 돌아간다 — 심사위원이 아무 영상이나 올려 보자고 해도
+   * 그대로 대응되어야 하기 때문이다.
+   */
+  const playPrepared = useCallback(
+    async (key: string, file: File) => {
+      abortRef.current?.abort();
+      setSource({ kind: "file", url: URL.createObjectURL(file), name: file.name, isVideo: true });
+      setSegments([]);
+      setAnalyzedUntil(0);
+      setDone(false);
+      setError("");
+      setTime(0);
+      setFollow(true);
+      setMode("ss");
+      setStage("analyzing");
+      setStatus("업로드하는 중");
+
+      let timeline: TimelineFrame[] = [];
+      let total = 0;
+      try {
+        const res = await fetch(`/stimuli/${key}.srt`);
+        if (!res.ok) throw new Error(String(res.status));
+        const built = buildTimelineFromScript(await res.text(), { vivid: true });
+        timeline = built.timeline;
+        total = built.totalDuration;
+        if (!timeline.length) throw new Error("대본이 비어 있습니다");
+      } catch (e) {
+        setError(`준비된 결과를 불러오지 못했어요 (${e instanceof Error ? e.message : e}).`);
+        setStage("error");
+        return;
+      }
+      setDuration(total);
+
+      // 진짜 분석과 같은 순서로 상태 문구가 지나가게 한다. 진행 바만 돌고
+      // 글자가 그대로면 멈춘 것처럼 보인다.
+      const steps: [number, string][] = [
+        [0.12, "준비하는 중"],
+        [0.3, "목소리와 배경음 분리"],
+        [0.55, "자막 만드는 중"],
+        [0.78, "목소리 톤을 분석하는 중"],
+      ];
+      const t0 = performance.now();
+      await new Promise<void>((resolve) => {
+        const tick = () => {
+          const p = Math.min(1, (performance.now() - t0) / (liveWait * 1000));
+          setPrepProgress(p);
+          for (let i = steps.length - 1; i >= 0; i--) {
+            if (p >= steps[i][0]) { setStatus(steps[i][1]); break; }
+          }
+          if (p >= 1) resolve();
+          else requestAnimationFrame(tick);
+        };
+        requestAnimationFrame(tick);
+      });
+
+      setPrepProgress(null);
+      setSegments(timeline);
+      setAnalyzedUntil(total);
+      setDone(true);
+      setVividRender(true);
+      setStage("ready");
+    },
+    [liveWait],
+  );
+
   const startFile = useCallback(
     (file: File) => {
+      // 준비해 둔 클립인가. 이름의 앞부분만 본다 — 사본이라 `demo1 (1).mp4`
+      // 처럼 되어 있어도 같은 영상이다.
+      if (liveKey && file.name.toLowerCase().startsWith(liveKey.toLowerCase())) {
+        void playPrepared(liveKey, file);
+        return;
+      }
       setSource({
         kind: "file",
         url: URL.createObjectURL(file),
@@ -171,7 +254,7 @@ export function DemoCard() {
       setStatus("업로드하는 중");
       void runStream((signal) => processFileStream(file, callbacks, { signal }));
     },
-    [callbacks, runStream],
+    [callbacks, runStream, liveKey, playPrepared],
   );
 
   const startYouTube = useCallback(
@@ -227,8 +310,15 @@ export function DemoCard() {
   }, []);
 
   useEffect(() => {
-    const key = new URLSearchParams(window.location.search).get("script");
+    const q = new URLSearchParams(window.location.search);
+    const key = q.get("script");
     if (key) void startScript(key);
+    const live = q.get("live");
+    if (live) {
+      setLiveKey(live);
+      const w = Number(q.get("wait"));
+      if (Number.isFinite(w) && w > 0) setLiveWait(w);
+    }
   }, [startScript]);
 
   // 탭 제목도 같이 바꾼다. 효과로 거는 이유: 라우터가 메타데이터 제목을 나중에
@@ -242,6 +332,7 @@ export function DemoCard() {
     setStage("idle");
     setVividRender(false);
     setDemoLabel("");
+    setPrepProgress(null);
     setSource(null);
     setSegments([]);
     setPlaying(false);
@@ -264,7 +355,13 @@ export function DemoCard() {
     : waiting
       ? "분석 중…"
       : "";
-  const progress = duration > 0 ? Math.min(1, analyzedUntil / duration) : 0;
+  const progress =
+    prepProgress != null
+      ? prepProgress
+      : duration > 0
+        ? Math.min(1, analyzedUntil / duration)
+        : 0;
+  const shownAnalyzed = prepProgress != null ? prepProgress * duration : analyzedUntil;
 
   // ── Web Audio: real amplitude for the bars (file playback only) ──
   const [analyser, setAnalyser] = useState<AnalyserNode | null>(null);
@@ -658,7 +755,7 @@ export function DemoCard() {
           </div>
           <div className={styles.analyzingMeta}>
             {duration > 0
-              ? `${Math.round(progress * 100)}% · ${analyzedUntil.toFixed(0)}초 / ${duration.toFixed(0)}초`
+              ? `${Math.round(progress * 100)}% · ${shownAnalyzed.toFixed(0)}초 / ${duration.toFixed(0)}초`
               : "음성 추출 → 자막 만들기 → 목소리 톤 분석"}
           </div>
           <button type="button" className={styles.linkBtn} onClick={reset}>

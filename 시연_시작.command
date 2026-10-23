@@ -60,6 +60,9 @@ for f in demo.mp4 demo.srt; do
   [ -f "$REPO/frontend/public/stimuli/$f" ] || echo "    ⚠️  없음: stimuli/$f"
 done
 
+# 무대에서 직접 고를 파일을 바탕화면에 둔다. 파일 선택창이 바로 이걸 보여 준다.
+[ -f "$HOME/Desktop/demo.mp4" ] || cp "$REPO/frontend/public/stimuli/demo.mp4" "$HOME/Desktop/demo.mp4"
+
 say "4/4  준비될 때까지 기다리는 중"
 for i in $(seq 1 90); do
   front=$(curl -s -o /dev/null -w '%{http_code}' http://localhost:3000/ 2>/dev/null)
@@ -79,6 +82,8 @@ fi
 open -a "Google Chrome" "http://localhost:3000/"
 sleep 1
 open -a "Google Chrome" "http://localhost:3000/?script=demo"
+sleep 1
+open -a "Google Chrome" "http://localhost:3000/?live=demo&wait=6.5"
 
 cat <<'EOF'
 
@@ -88,7 +93,9 @@ cat <<'EOF'
  이제 이 터미널 창을 ⌘H 로 숨기거나 그냥 닫으셔도 됩니다.
  서버는 떼어 놓았으므로 창을 닫아도 계속 떠 있습니다.
 
- 크롬 탭        ⌘1 소개   ⌘2 데모 (변호사 → 저금통, 56초)
+ 크롬 탭        ⌘1 소개   ⌘2 데모 (56초)   ⌘3 직접 올리기
+ ⌘3 에서는      [파일 선택하기] → 바탕화면 demo.mp4 → 6.5초 뒤 재생
+                ⚠️ 어제 분석해 둔 결과라고 **반드시 밝히십시오**
  전체화면       ⌃⌘F  (메뉴 막대까지 사라집니다)
  끝낸 뒤 정리    터미널에서  lsof -ti tcp:3000 tcp:8000 | xargs kill
 ────────────────────────────────────────────────
