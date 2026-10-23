@@ -1,19 +1,6 @@
 import type { Metadata } from "next";
-import { IBM_Plex_Mono, Noto_Sans_KR } from "next/font/google";
 import { SoundShapeSite } from "@/components/site/SoundShapeSite";
-
-const notoKr = Noto_Sans_KR({
-  weight: ["400", "500", "600", "700", "900"],
-  subsets: ["latin"],
-  preload: false,
-  variable: "--font-noto-kr",
-});
-
-const plexMono = IBM_Plex_Mono({
-  weight: ["400", "500", "600", "700"],
-  subsets: ["latin"],
-  variable: "--font-plex-mono",
-});
+import { fontClass } from "./fonts";
 
 export const metadata: Metadata = {
   title: "SoundShape — 말투가 들리지 않아도, 감정은 보이게",
@@ -22,5 +9,5 @@ export const metadata: Metadata = {
 };
 
 export default function Home() {
-  return <SoundShapeSite fontClass={`${notoKr.variable} ${plexMono.variable}`} />;
+  return <SoundShapeSite fontClass={fontClass} />;
 }

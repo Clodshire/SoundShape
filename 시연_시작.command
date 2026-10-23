@@ -49,8 +49,17 @@ if [ "$stale" = 0 ]; then
 fi
 if [ "$stale" = 1 ]; then
   echo "    빌드가 없거나 낡아서 다시 빌드합니다 (1분쯤)…"
-  (cd "$REPO/frontend" && npm run build > "$LOG/build.log" 2>&1) \
-    || { echo "    ❌ 빌드 실패 — $LOG/build.log 를 보십시오"; exit 1; }
+  if ! (cd "$REPO/frontend" && npm run build > "$LOG/build.log" 2>&1); then
+    # 빌드는 폰트를 구글에서 받아 오므로 **인터넷이 없으면 실패한다.**
+    # 그렇다고 멈추면 안 된다 — 지난번 빌드가 있으면 그걸로 시연할 수 있다.
+    if [ -f "$REPO/frontend/.next/BUILD_ID" ]; then
+      echo "    ⚠️  빌드 실패 — 지난번 빌드로 진행합니다 ($LOG/build.log)"
+      echo "       인터넷이 없으면 빌드만 실패합니다. 시연에는 지장 없습니다."
+    else
+      echo "    ❌ 빌드 실패, 쓸 수 있는 빌드도 없습니다 — $LOG/build.log"
+      exit 1
+    fi
+  fi
 fi
 (cd "$REPO/frontend" && nohup npm run start > "$LOG/frontend.log" 2>&1) &
 disown
@@ -81,9 +90,9 @@ fi
 # 탭 순서가 곧 시연 순서다. ⌘1 ⌘2 ⌘3 으로만 움직이면 다른 창이 안 보인다.
 open -a "Google Chrome" "http://localhost:3000/"
 sleep 1
-open -a "Google Chrome" "http://localhost:3000/?script=demo"
+open -a "Google Chrome" "http://localhost:3000/demo"
 sleep 1
-open -a "Google Chrome" "http://localhost:3000/?live=demo&wait=6.5"
+open -a "Google Chrome" "http://localhost:3000/livedemo"
 
 cat <<'EOF'
 

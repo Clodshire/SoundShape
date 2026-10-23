@@ -310,7 +310,21 @@ export function DemoCard() {
   }, []);
 
   useEffect(() => {
+    // 발표 중에는 주소 표시줄도 보인다. `/demo` · `/livedemo` 를 먼저 보고,
+    // 질의 문자열은 다른 클립을 시험할 때를 위해 남겨 둔다.
+    const path = window.location.pathname.replace(/\/+$/, "");
     const q = new URLSearchParams(window.location.search);
+
+    if (path === "/livedemo") {
+      setLiveKey("demo");
+      setLiveWait(6.5);
+      return;
+    }
+    if (path === "/demo") {
+      void startScript("demo");
+      return;
+    }
+
     const key = q.get("script");
     if (key) void startScript(key);
     const live = q.get("live");
