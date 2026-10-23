@@ -515,8 +515,13 @@ export function DemoCard() {
       // 그 영상의 가장 큰 소리를 1 로 본다. 고정 기준을 쓰면 조용한 클립에서
       // 아무것도 안 느껴지고 큰 클립에서는 내내 최대가 된다.
       const norm = peak > 0.004 ? Math.min(1, env / peak) : 0;
-      // 아주 작은 소리는 버린다 — 배경 잡음까지 따라 떨 이유가 없다.
-      const shaped = norm < 0.12 ? 0 : Math.pow(norm, 0.7);
+      // 차이를 **벌린다.** 전에는 0.7 제곱이라 작은 소리가 오히려 끌어올려져서
+      // (중앙값 64/127) 내내 웅웅거렸다. 1 보다 큰 지수는 반대로 작은 것을 더
+      // 작게 만든다 — 조용히 말하면 확실히 약하게 닿는다.
+      // 문턱 아래는 0 이고, 문턱부터 최대까지를 다시 0~1 로 편다.
+      const GATE = 0.18;
+      const shaped =
+        norm < GATE ? 0 : Math.pow((norm - GATE) / (1 - GATE), 1.5) * 0.8;
       const e = lastRef.current?.emotion;
       sendAmp(shaped * gainFor(e?.category, e?.confidence ?? 1));
 
