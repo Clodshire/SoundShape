@@ -47,14 +47,16 @@ const EMOTION_KO: Record<string, string> = {
   joy: "기쁨",
   surprise: "놀람",
   sadness: "슬픔",
-  fear: "두려움",
+  fear: "공포",
   neutral: "중립",
   sarcasm: "비꼼",
   resignation: "체념",
   sincerity: "진심",
 };
-// The categories the current models actually produce.
-const LEGEND_ORDER = ["anger", "joy", "surprise", "sadness", "fear", "neutral"];
+// 포스터·웹사이트의 범례와 **같은 여섯 가지, 같은 순서**. 세 곳이 다르면
+// 심사위원이 맞춰 보다가 걸린다. 놀람은 뺐다 — 화면에서 기쁨과 구분되지
+// 않는데 범례에서만 나누면 거짓말이 된다 (toneForEmotion 도 같이 접는다).
+const LEGEND_ORDER = ["joy", "sadness", "anger", "neutral", "fear", "sarcasm"];
 const HUES = mappingConfig.color.hue_by_category as Record<string, number>;
 
 function legendColor(category: string): string {

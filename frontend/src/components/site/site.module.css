@@ -1415,10 +1415,46 @@ input.srOnly:focus-visible + .dropButtons label {
 /* ── 왼쪽 위 확신도 (크롬 확장과 같은 값) ── */
 /* 크롬 확장(extension/src/content.ts)의 값을 그대로 가져왔다.
    두 화면에서 같은 것이 같게 보여야 한다. */
-.confBadge {
+.confPanel {
   position: absolute;
   top: 12px;
   left: 12px;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 4px;
+  pointer-events: none;
+}
+
+.confLegend {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 2px 8px;
+  padding: 5px 9px;
+  border-radius: 8px;
+  background: rgba(0, 0, 0, 0.55);
+  color: #fff;
+  font-size: 11px;
+  font-weight: 600;
+  line-height: 1.3;
+  max-width: 280px;
+}
+
+.confLegendItem {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  white-space: nowrap;
+}
+
+.confLegendDot {
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  flex: none;
+}
+
+.confBadge {
   display: inline-flex;
   align-items: center;
   gap: 6px;

@@ -1097,13 +1097,13 @@ void main(){
     joy: "\uAE30\uC068",
     surprise: "\uB180\uB78C",
     sadness: "\uC2AC\uD514",
-    fear: "\uB450\uB824\uC6C0",
+    fear: "\uACF5\uD3EC",
     neutral: "\uC911\uB9BD",
     sarcasm: "\uBE44\uAF3C",
     resignation: "\uCCB4\uB150",
     sincerity: "\uC9C4\uC2EC"
   };
-  var LEGEND_ORDER = ["anger", "joy", "surprise", "sadness", "fear", "neutral"];
+  var LEGEND_ORDER = ["joy", "sadness", "anger", "neutral", "fear", "sarcasm"];
   var HUES = mapping_config_default.color.hue_by_category;
   function legendColor(category) {
     if (category === "neutral" || HUES[category] == null) return "hsl(0 0% 60%)";

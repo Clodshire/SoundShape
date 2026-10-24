@@ -590,10 +590,27 @@ export function DemoCard() {
     <>
       <div className={styles.overlayScrim} aria-hidden="true" />
       {isSS && showConf && (
-        <div className={styles.confBadge}>
-          <span className={styles.confDot} style={{ backgroundColor: tone.color }} />
-          지금: {tone.label}
-          {conf != null && ` · 확신 ${Math.round(conf * 100)}%`}
+        // 배지 바로 아래에 범례를 붙인다. 화면 반대편에 떼어 놓으면 보는 사람이
+        // 색을 확인하려고 눈을 옮겨야 하고, 그 사이에 색이 이미 바뀐다.
+        // 크롬 확장도 같은 구성이라 두 화면이 같게 보인다.
+        <div className={styles.confPanel}>
+          <div className={styles.confBadge}>
+            <span className={styles.confDot} style={{ backgroundColor: tone.color }} />
+            지금: {tone.label}
+            {conf != null && ` · 확신 ${Math.round(conf * 100)}%`}
+          </div>
+          <div className={styles.confLegend}>
+            {TONE_ORDER.map((id) => (
+              <span key={id} className={styles.confLegendItem}>
+                <span
+                  aria-hidden="true"
+                  className={styles.confLegendDot}
+                  style={{ backgroundColor: TONES[id].color }}
+                />
+                {TONES[id].label}
+              </span>
+            ))}
+          </div>
         </div>
       )}
       <div className={styles.overlay}>
@@ -911,16 +928,7 @@ export function DemoCard() {
                     </button>
                   )}
                 </div>
-                <div className={styles.bottomRight}>
-                  <div className={styles.legend}>
-                    {TONE_ORDER.map((id) => (
-                      <span key={id} className={styles.legendItem}>
-                        <span aria-hidden="true" className={styles.legendDot} style={{ backgroundColor: TONES[id].color }} />
-                        {TONES[id].label}
-                      </span>
-                    ))}
-                  </div>
-                </div>
+
               </div>
             )}
             {!done && (

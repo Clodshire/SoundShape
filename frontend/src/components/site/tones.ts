@@ -27,8 +27,10 @@ export const TONES: Record<ToneId, Tone> = {
   neutral: { id: "neutral", label: "감정 없음", color: "#8C8C8C", speed: 3.6 },
 };
 
+// 포스터의 범례와 **같은 순서**. 두 곳에서 순서가 다르면 심사위원이 둘을
+// 맞춰 보다가 걸린다 — 노랑·파랑·빨강·회색·보라·청록.
 export const TONE_ORDER: ToneId[] = [
-  "joy", "sadness", "anger", "fear", "sarcasm", "neutral",
+  "joy", "sadness", "anger", "neutral", "fear", "sarcasm",
 ];
 
 // "#2F7A4D" → { h: 144, s: 44, l: 33 } — the emotion field takes HSL.
