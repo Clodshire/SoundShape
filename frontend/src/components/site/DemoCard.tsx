@@ -548,15 +548,25 @@ export function DemoCard() {
       // 그 영상의 가장 큰 소리를 1 로 본다. 고정 기준을 쓰면 조용한 클립에서
       // 아무것도 안 느껴지고 큰 클립에서는 내내 최대가 된다.
       const norm = peak > 0.004 ? Math.min(1, env / peak) : 0;
-      // 차이를 **벌린다.** 전에는 0.7 제곱이라 작은 소리가 오히려 끌어올려져서
-      // (중앙값 64/127) 내내 웅웅거렸다. 1 보다 큰 지수는 반대로 작은 것을 더
-      // 작게 만든다 — 조용히 말하면 확실히 약하게 닿는다.
-      // 문턱 아래는 0 이고, 문턱부터 최대까지를 다시 0~1 로 편다.
-      const GATE = 0.18;
-      const shaped =
-        norm < GATE ? 0 : Math.pow((norm - GATE) / (1 - GATE), 1.5) * 0.8;
+      // 모터에는 **느껴지기 시작하는 지점**이 있다. 그 아래로 보낸 값은
+      // 전부 "약하게 웅웅거림" 하나로 뭉개진다 — 심사에서 "느껴지지 않는데
+      // 계속 울린다"는 말을 들은 게 그 구간에 몰려 있었기 때문이다.
+      //
+      // 그래서 쓰는 폭을 **0 아니면 확실히 느껴지는 값**으로 둔다. 문턱 아래는
+      // 완전히 끄고(전체의 약 38%), 넘으면 바로 46 부터 시작해 127 까지 간다.
+      // 대비가 '약하다 ↔ 세다' 가 아니라 '없다 ↔ 있다' 로 먼저 갈린다.
+      const GATE = 0.22;
+      const FLOOR = 0.36; // 46/127 — 이 아래는 손목이 구분하지 못한다
       const e = lastRef.current?.emotion;
-      sendAmp(shaped * gainFor(e?.category, e?.confidence ?? 1));
+      if (norm < GATE) {
+        sendAmp(0);
+      } else {
+        const shaped = Math.pow((norm - GATE) / (1 - GATE), 1.3);
+        // 감정 배율은 **바닥 위쪽에만** 건다. 전체에 곱하면 슬픈 장면이
+        // 바닥 아래로 내려가 다시 안 느껴진다.
+        const g = gainFor(e?.category, e?.confidence ?? 1);
+        sendAmp(FLOOR + (1 - FLOOR) * shaped * g);
+      }
 
       raf = requestAnimationFrame(tick);
     };
