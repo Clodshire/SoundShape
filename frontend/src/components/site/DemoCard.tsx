@@ -205,23 +205,56 @@ export function DemoCard() {
       }
       setDuration(total);
 
-      // 진짜 분석과 같은 순서로 상태 문구가 지나가게 한다. 진행 바만 돌고
-      // 글자가 그대로면 멈춘 것처럼 보인다.
+      // 진행을 **구간 단위로 튀게** 한다.
+      //
+      // 진짜 분석은 매끄럽게 차오르지 않는다. 앞쪽은 오디오를 꺼내고 목소리를
+      // 분리하고 전사하는 동안 막대가 아예 안 움직이다가, 그다음부터 구간이
+      // 하나씩 도착할 때마다 뚝뚝 뛴다. 일정한 속도로 채우면 그게 바로
+      // 미리 만들어 둔 티가 난다.
+      //
+      // 그래서 앞 45% 는 멈춰 있고(문구만 바뀐다), 나머지에서 자막 줄 수만큼
+      // 나눠 뛴다. 간격은 조금씩 어긋나게 둔다 — 정확히 같은 간격으로 뛰면
+      // 그것도 사람이 만든 티가 난다.
+      const total_ms = liveWait * 1000;
+      const headMs = total_ms * 0.45;
+      // 문구가 바뀌는 시점은 **막대가 멈춰 있는 구간 안**에 들어가야 한다.
+      // 0.45 를 넘기면 마지막 문구가 스쳐 지나가 버려서 아무도 못 읽는다.
       const steps: [number, string][] = [
-        [0.12, "준비하는 중"],
-        [0.3, "목소리와 배경음 분리"],
-        [0.55, "자막 만드는 중"],
-        [0.78, "목소리 톤을 분석하는 중"],
+        [0, "업로드하는 중"],
+        [0.08, "음성을 꺼내는 중"],
+        [0.18, "목소리와 배경음 분리"],
+        [0.32, "자막 만드는 중"],
       ];
       const t0 = performance.now();
+      // 구간이 도착하는 시각. 뒤로 갈수록 조금 빨라진다 (실제로도 모델이
+      // 데워진 뒤가 빠르다).
+      const n = timeline.length;
+      const arrive = timeline.map((_, i) => {
+        const f = (i + 1) / n;
+        const eased = Math.pow(f, 0.85);
+        const jitter = ((i * 2654435761) % 1000) / 1000 - 0.5; // 고르게 흩되 매번 같게
+        return headMs + (total_ms - headMs) * eased + jitter * 90;
+      });
+
       await new Promise<void>((resolve) => {
         const tick = () => {
-          const p = Math.min(1, (performance.now() - t0) / (liveWait * 1000));
-          setPrepProgress(p);
-          for (let i = steps.length - 1; i >= 0; i--) {
-            if (p >= steps[i][0]) { setStatus(steps[i][1]); break; }
+          const ms = performance.now() - t0;
+          if (ms < headMs) {
+            setPrepProgress(0);
+            for (let i = steps.length - 1; i >= 0; i--) {
+              if (ms >= steps[i][0] * total_ms) { setStatus(steps[i][1]); break; }
+            }
+          } else {
+            setStatus("목소리 톤을 분석하는 중");
+            let arrived = 0;
+            while (arrived < n && ms >= arrive[arrived]) arrived += 1;
+            // 도착한 구간의 끝 시각까지가 '분석된 길이'다 — 진짜 분석과 같다.
+            const until = arrived > 0
+              ? timeline[arrived - 1].t + (timeline[arrived - 1].duration ?? 0)
+              : 0;
+            setPrepProgress(Math.min(1, until / Math.max(0.1, total)));
           }
-          if (p >= 1) resolve();
+          if (ms >= total_ms) resolve();
           else requestAnimationFrame(tick);
         };
         requestAnimationFrame(tick);
