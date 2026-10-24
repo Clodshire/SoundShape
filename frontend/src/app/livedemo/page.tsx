@@ -14,5 +14,5 @@ export const metadata: Metadata = {
 };
 
 export default function Page() {
-  return <SoundShapeSite fontClass={fontClass} />;
+  return <SoundShapeSite fontClass={fontClass} bare />;
 }

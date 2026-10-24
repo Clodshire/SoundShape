@@ -12,7 +12,33 @@ import { Waveform } from "./Waveform";
 // backend through <DemoCard>. The research/debug view lives at /studio, which
 // this page deliberately does NOT link to — it is reachable by URL only, for
 // the presentation demo. Do not add a link back without asking.
-export function SoundShapeSite({ fontClass }: { fontClass: string }) {
+/**
+ * `bare` — 시연용 축약 화면.
+ *
+ * 심사위원 앞에서는 제목과 **프로그램 자체**만 있으면 된다. 메뉴·소개 문구·
+ * 기능 설명은 읽을 사람이 없는데 화면만 차지하고, 스크롤해서 내려가야 데모가
+ * 보이는 것도 무대에서는 군더더기다. `/demo` 와 `/livedemo` 가 이 모드로 뜬다.
+ */
+export function SoundShapeSite({
+  fontClass,
+  bare = false,
+}: {
+  fontClass: string;
+  bare?: boolean;
+}) {
+  if (bare) {
+    return (
+      <div className={`${styles.site} ${fontClass}`}>
+        <header className={styles.header}>
+          <span className={styles.logo}>SoundShape</span>
+        </header>
+        <main>
+          <DemoCard />
+        </main>
+      </div>
+    );
+  }
+
   return (
     <div className={`${styles.site} ${fontClass}`}>
       <header className={styles.header}>
