@@ -8,10 +8,10 @@ import { buildTimelineFromScript } from "@/lib/scriptMode";
 import {
   connectBand,
   disconnectBand,
-  gainFor,
   haptikSupported,
+  playEmotion,
   reconnectBand,
-  sendAmp,
+  setLevel as setBandLevel,
   stopBand,
 } from "@/lib/haptic";
 import type { TimelineFrame } from "@/types/emotion";
@@ -503,77 +503,108 @@ export function DemoCard() {
     };
   }, [last, segments, toneHsl, renderMode, vividRender]);
 
-  // 손목은 **목소리를 그대로 따라 떤다.** 감정마다 박자를 만들어 되풀이하면
-  // 같은 리듬이 계속 돌아서 영상과 따로 노는 느낌이 난다 — 말은 리듬이 아니다.
-  // 감정은 전체 세기로만 남긴다 (분노는 묵직, 슬픔은 여리게).
-  const lastRef = useRef(last);
-  lastRef.current = last;
-  const mediaTime = () => mediaRef.current?.currentTime ?? 0;
-  /** 이 줄의 발화가 끝나기까지 남은 시간(초). 자막이 아니라 말 기준. */
-  const speechLeft = (f: TimelineFrame | null | undefined): number => {
-    if (!f) return 0;
-    return (f.t + (f.speechDuration ?? f.duration ?? 0)) - mediaTime();
-  };
-
+  // 줄이 바뀔 때마다 손목에 그 감정의 리듬을 보낸다. 화면과 같은 값에서
+  // 갈라져 나오므로, 보는 것과 느끼는 것이 어긋나지 않는다.
+  const beat = last?.t ?? -1;
   useEffect(() => {
     if (!band) return;
-    if (!playing || !analyser) {
+    // 멈춰 있으면 손목도 멈춘다. 재생을 다시 누르면 그 줄의 리듬을 처음부터.
+    if (!playing || beat < 0) {
       stopBand();
       return;
     }
+    const e = last?.emotion;
+    // 자막 길이가 아니라 **실제 말한 길이**로 울린다. 자막은 다음 줄이 시작할
+    // 때까지 떠 있는데(장면이 이어지므로), 그 길이로 울리면 말이 끝난 뒤에도
+    // 손목이 계속 떨린다 — demo 의 12.4초 줄은 자막 9초, 발화 1.8초였다.
+    const ms = speechLeftMs(last);
+    if (e && ms > 0) playEmotion(e.category, e.confidence ?? 1, ms);
+    else stopBand();
+    // last 는 매 프레임 새 객체가 될 수 있어서, 줄이 바뀌는 beat 로만 건다.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [band, beat, playing]);
+
+  // 목소리 크기를 그대로 손목으로 넘긴다. 말이 없으면 아예 0 이다.
+  //
+  // 문턱을 소리의 유무가 아니라 **대사인지 배경인지**에 맞춰 잡아야 한다.
+  // demo1 의 14~18초는 대사가 끝난 구간인데도 배경음이 평균 −34.6dB 로 깔려 있어서,
+  // 낮은 문턱이면 그대로 열려 계속 울린다. 대사는 −23.6dB 로 11dB 더 크다.
+  // 그래서 문턱을 그 사이에 두고, 순간적인 소리에 열리지 않도록 느린 값으로 판단한다.
+  // 지금 줄의 발화가 끝나는 **영상 시각**. 벽시계로 재면 버퍼링이나 일시정지로
+  // 둘이 어긋나서, 말이 끝난 뒤에도 가드가 열린 것으로 보인다.
+  const lastRef = useRef(last);
+  lastRef.current = last;
+  const mediaTime = () => mediaRef.current?.currentTime ?? 0;
+  const speechLeftMs = (f: TimelineFrame | null | undefined): number => {
+    if (!f) return 0;
+    const end = f.t + (f.speechDuration ?? f.duration ?? 0);
+    return Math.max(0, (end - mediaTime()) * 1000);
+  };
+  useEffect(() => {
+    if (!band || !playing || !analyser) return;
     const buf = new Uint8Array(analyser.fftSize);
-    let env = 0;    // 지금 소리 크기 — 빠르게 따라간다
-    let peak = 0;   // 최근 최대치 — 영상마다 녹음 레벨이 달라 기준으로 쓴다
+    let smooth = 0;   // 세기용 — 빠르게 따라간다
+    let env = 0;      // 문턱 판단용 — 느리게 움직여 순간 소리에 안 속는다
+    let peak = 0;     // 최근 가장 컸던 값 — 문턱을 여기에 상대적으로 잡는다
+    let open = false; // 지금 열려 있나 (히스테리시스)
+    let loud = 0;     // 최근에 소리가 있었나 — 음소거 알아보기
     let raf = 0;
     const tick = () => {
-      // 말이 끝났으면 바로 끊는다. 배경음이 아무리 커도 울리지 않는다.
-      if (speechLeft(lastRef.current) <= 0) {
-        stopBand();
-        raf = requestAnimationFrame(tick);
-        return;
-      }
-
       analyser.getByteTimeDomainData(buf);
       let sum = 0;
       for (let i = 0; i < buf.length; i++) {
         const x = (buf[i] - 128) / 128;
         sum += x * x;
       }
-      const v = Math.sqrt(sum / buf.length);
-      // 올라올 때는 거의 그대로, 내려갈 때만 조금 늦춘다. 너무 매끄럽게 하면
-      // 말의 억양이 뭉개져서 '소리를 따라간다'는 느낌이 사라진다.
-      env = v > env ? env + (v - env) * 0.8 : env + (v - env) * 0.35;
+      const v = Math.max(0, Math.min(1, Math.sqrt(sum / buf.length) * 6));
+      // 올라올 때는 빠르게, 내려갈 때는 천천히 — 자음마다 뚝뚝 끊기면 안 된다.
+      smooth = v > smooth ? smooth + (v - smooth) * 0.55 : smooth + (v - smooth) * 0.22;
+      env = v > env ? env + (v - env) * 0.25 : env + (v - env) * 0.08;
+      loud = Math.max(loud * 0.995, env);
+      // 문턱을 **고정값이 아니라 최근 최대치의 비율로** 잡는다. 고정으로 두면
+      // 클립마다 녹음 레벨이 달라 한쪽에서만 열린다 — 합친 데모의 뒤쪽 절반이
+      // 앞쪽보다 13dB 조용해서 아예 안 울렸던 게 그 때문이다. 상대값이면
+      // 어떤 영상을 올려도 그 영상의 대사 크기에 맞춰진다.
       peak = Math.max(peak * 0.999, env);
+      const openAt = Math.max(0.09, peak * 0.42);
+      const closeAt = Math.max(0.05, peak * 0.26);
+      // 열고 닫는 문턱을 벌려 둔다. 하나로 두면 경계에서 깜빡거린다.
+      const was = open;
+      open = env > openAt ? true : env < closeAt ? false : open;
 
-      // 그 영상의 가장 큰 소리를 1 로 본다. 고정 기준을 쓰면 조용한 클립에서
-      // 아무것도 안 느껴지고 큰 클립에서는 내내 최대가 된다.
-      const norm = peak > 0.004 ? Math.min(1, env / peak) : 0;
-      // 모터에는 **느껴지기 시작하는 지점**이 있다. 그 아래로 보낸 값은
-      // 전부 "약하게 웅웅거림" 하나로 뭉개진다 — 심사에서 "느껴지지 않는데
-      // 계속 울린다"는 말을 들은 게 그 구간에 몰려 있었기 때문이다.
-      //
-      // 그래서 쓰는 폭을 **0 아니면 확실히 느껴지는 값**으로 둔다. 문턱 아래는
-      // 완전히 끄고(전체의 약 38%), 넘으면 바로 46 부터 시작해 127 까지 간다.
-      // 대비가 '약하다 ↔ 세다' 가 아니라 '없다 ↔ 있다' 로 먼저 갈린다.
-      const GATE = 0.22;
-      const FLOOR = 0.36; // 46/127 — 이 아래는 손목이 구분하지 못한다
-      const e = lastRef.current?.emotion;
-      if (norm < GATE) {
-        sendAmp(0);
-      } else {
-        const shaped = Math.pow((norm - GATE) / (1 - GATE), 1.3);
-        // 감정 배율은 **바닥 위쪽에만** 건다. 전체에 곱하면 슬픈 장면이
-        // 바닥 아래로 내려가 다시 안 느껴진다.
-        const g = gainFor(e?.category, e?.confidence ?? 1);
-        sendAmp(FLOOR + (1 - FLOOR) * shaped * g);
+      // 발화가 끝났으면 문턱과 무관하게 끊는다. 이게 마지막 방어선이다 —
+      // 배경음이 아무리 커도 말이 끝난 뒤에는 손목이 울리지 않는다.
+      if (speechLeftMs(lastRef.current) <= 0) {
+        setBandLevel(0);
+        if (open) { open = false; stopBand(); }
+        raf = requestAnimationFrame(tick);
+        return;
       }
 
+      if (loud < 0.04) {
+        // 음소거로 재생 중이다. 측정이 불가능하니 리듬을 그대로 내보낸다.
+        setBandLevel(1);
+      } else if (!open) {
+        setBandLevel(0);
+        if (was) stopBand();            // 대사가 끝났다 — 루프까지 끊는다
+      } else {
+        // 말하는 동안에는 거의 그대로(0.85 제곱) 넘겨 강약을 살린다.
+        setBandLevel(Math.pow(smooth, 0.85));
+        const f = lastRef.current;
+        const left = speechLeftMs(f);
+        if (!was && left > 0 && f?.emotion) {
+          // 말하다 말고 숨을 쉰 것이다 — 남은 만큼만 이어서 다시.
+          // 발화가 이미 끝났으면(left === 0) 다시 켜지 않는다. 안 그러면 배경음에
+          // 문턱이 열릴 때마다 되살아나서, 조용해야 할 구간이 도로 울린다.
+          playEmotion(f.emotion.category, f.emotion.confidence ?? 1, left);
+        }
+      }
       raf = requestAnimationFrame(tick);
     };
     raf = requestAnimationFrame(tick);
     return () => {
       cancelAnimationFrame(raf);
-      stopBand();
+      setBandLevel(1);
     };
   }, [band, playing, analyser]);
 
